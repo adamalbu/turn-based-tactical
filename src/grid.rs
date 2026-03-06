@@ -1,7 +1,6 @@
-use bevy::{
-    picking::hover::{self, Hovered},
-    prelude::*,
-};
+use bevy::prelude::*;
+
+use crate::units::PlayerUnit;
 
 pub const TILE_SIZE: f32 = 64.0;
 pub const MAP_WIDTH: u32 = 12;
@@ -15,6 +14,38 @@ pub struct Tile {
     pub y: i32,
 }
 
+impl From<Tile> for Vec2 {
+    fn from(val: Tile) -> Self {
+        Vec2 {
+            x: val.x as f32,
+            y: val.y as f32,
+        }
+    }
+}
+
+#[derive(Component, PartialEq, Debug)]
+pub struct GridPosition {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl From<Tile> for GridPosition {
+    fn from(value: Tile) -> Self {
+        Self {
+            x: value.x,
+            y: value.y,
+        }
+    }
+}
+
+impl From<&Tile> for GridPosition {
+    fn from(value: &Tile) -> Self {
+        Self {
+            x: value.x,
+            y: value.y,
+        }
+    }
+}
 #[derive(Component)]
 pub struct TileHighlight;
 
@@ -83,7 +114,21 @@ pub fn spawn(
                 ))
                 .observe(update_overlay_material::<Pointer<Out>>(
                     overlay_materials.none.clone(),
-                ));
+                ))
+                .observe(
+                    |event: On<Pointer<Click>>,
+                     tiles: Query<&Tile>,
+                     players: Query<(&PlayerUnit, &GridPosition)>| {
+                        let clicked_coords: GridPosition = tiles.get(event.entity).unwrap().into();
+
+                        if let Some((player, unit)) = players
+                            .iter()
+                            .find(|(player, position)| **position == clicked_coords)
+                        {
+                            println!("clicked player")
+                        };
+                    },
+                );
         }
     }
 

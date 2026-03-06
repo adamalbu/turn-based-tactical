@@ -1,18 +1,12 @@
 use bevy::prelude::*;
 
-use crate::grid;
+use crate::grid::{self, GridPosition};
 
 #[derive(Component)]
-pub struct PlayerUnit {
-    x: i32,
-    y: i32,
-}
+pub struct PlayerUnit;
 
 #[derive(Component)]
-pub struct EnemyUnit {
-    x: i32,
-    y: i32,
-}
+pub struct EnemyUnit;
 
 #[derive(Component)]
 pub struct Health {
@@ -26,9 +20,13 @@ pub struct Attack {
     pub range: u32,
 }
 
+pub enum MovementShape {
+    Square(u32),
+}
+
 #[derive(Component)]
 pub struct Movement {
-    pub range: u32,
+    pub range: MovementShape,
 }
 
 pub fn spawn_player(
@@ -38,13 +36,13 @@ pub fn spawn_player(
 
     query: Query<(&grid::Tile, &Transform)>,
 ) {
-    const SPAWN_TILE: (i32, i32) = (0, 0);
+    const SPAWN_TILE: grid::Tile = grid::Tile { x: 0, y: 0 };
 
     dbg!(&query);
 
     let (_tile, tile_transform) = query
         .iter()
-        .find(|(tile, _)| (tile.x, tile.y) == SPAWN_TILE)
+        .find(|(tile, _)| tile.x == SPAWN_TILE.x && tile.y == SPAWN_TILE.y)
         .expect("No tile exists there");
 
     let tile_pos = tile_transform.translation;
@@ -58,5 +56,7 @@ pub fn spawn_player(
         Mesh2d(player_mesh),
         MeshMaterial2d(player_material),
         Transform::from_xyz(tile_pos.x, tile_pos.y, 0.0),
+        PlayerUnit,
+        GridPosition::from(SPAWN_TILE),
     ));
 }
