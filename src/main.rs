@@ -1,5 +1,11 @@
 use bevy::prelude::*;
 
+mod grid;
+
+pub fn spawn_camera(mut commands: Commands) {
+    commands.spawn(Camera2d);
+}
+
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::WHITE))
@@ -11,5 +17,6 @@ fn main() {
             }),
             ..Default::default()
         }))
+        .add_systems(Startup, (spawn_camera, grid::spawn))
         .run();
 }
