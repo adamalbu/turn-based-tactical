@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 mod grid;
+mod units;
 
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
@@ -17,6 +18,13 @@ fn main() {
             }),
             ..Default::default()
         }))
-        .add_systems(Startup, (spawn_camera, grid::spawn))
+        .add_systems(
+            Startup,
+            (
+                spawn_camera,
+                grid::spawn,
+                units::spawn_player.after(grid::spawn),
+            ),
+        )
         .run();
 }

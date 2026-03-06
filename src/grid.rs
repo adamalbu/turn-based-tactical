@@ -1,14 +1,15 @@
 use bevy::prelude::*;
 
-const TILE_SIZE: f32 = 64.0;
+pub const TILE_SIZE: f32 = 64.0;
+pub const MAP_WIDTH: u32 = 12;
+pub const MAP_HEIGHT: u32 = 9;
+
 const THICKNESS: f32 = 2.0;
-const WIDTH: u32 = 12;
-const HEIGHT: u32 = 9;
 
 #[derive(Component)]
-struct Tile {
-    x: i32,
-    y: i32,
+pub struct Tile {
+    pub x: i32,
+    pub y: i32,
 }
 
 pub fn spawn(
@@ -20,14 +21,13 @@ pub fn spawn(
     let tile_material = materials.add(Color::BLACK);
 
     let offset = Vec2::new(
-        -(WIDTH as f32 * TILE_SIZE) / 2.0 + TILE_SIZE / 2.0,
-        -(HEIGHT as f32 * TILE_SIZE) / 2.0 + TILE_SIZE / 2.0,
+        -(MAP_WIDTH as f32 * TILE_SIZE) / 2.0 + TILE_SIZE / 2.0,
+        -(MAP_HEIGHT as f32 * TILE_SIZE) / 2.0 + TILE_SIZE / 2.0,
     );
 
-    for x in 0..WIDTH {
-        for y in 0..HEIGHT {
+    for x in 0..MAP_WIDTH {
+        for y in 0..MAP_HEIGHT {
             let pos = Vec2::new(x as f32 * TILE_SIZE, y as f32 * TILE_SIZE) + offset;
-            dbg!(&pos);
 
             commands.spawn((
                 Mesh2d(tile_mesh.clone()),
