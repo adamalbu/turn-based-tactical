@@ -2,7 +2,10 @@ use bevy::prelude::*;
 
 use crate::grid::{self, GridPosition};
 
-#[derive(Component)]
+#[derive(Message, Debug, Clone, Copy)]
+pub struct PlayerSelected(pub Entity);
+
+#[derive(Component, Debug, Clone, Copy)]
 pub struct PlayerUnit;
 
 #[derive(Component)]
@@ -20,13 +23,29 @@ pub struct Attack {
     pub range: u32,
 }
 
-pub enum MovementShape {
+#[derive(Clone, Copy)]
+pub enum MoveShape {
     Square(u32),
+}
+
+impl MoveShape {
+    pub fn contains(self, origin: GridPosition, tile: GridPosition) -> bool {
+        let dx = (tile.x - origin.x).abs();
+        let dy = (tile.y - origin.y).abs();
+
+        if dx == 0 && dy == 0 {
+            return false;
+        }
+
+        match self {
+            Self::Square(range) => dx < range as i32 && dy < range as i32,
+        }
+    }
 }
 
 #[derive(Component)]
 pub struct Movement {
-    pub range: MovementShape,
+    pub range: MoveShape,
 }
 
 pub fn spawn_player(
@@ -36,7 +55,7 @@ pub fn spawn_player(
 
     query: Query<(&grid::Tile, &Transform)>,
 ) {
-    const SPAWN_TILE: grid::Tile = grid::Tile { x: 0, y: 0 };
+    const SPAWN_TILE: grid::Tile = grid::Tile { x: 4, y: 4 };
 
     dbg!(&query);
 
@@ -57,6 +76,9 @@ pub fn spawn_player(
         MeshMaterial2d(player_material),
         Transform::from_xyz(tile_pos.x, tile_pos.y, 0.0),
         PlayerUnit,
+        Movement {
+            range: MoveShape::Square(3),
+        },
         GridPosition::from(SPAWN_TILE),
     ));
 }

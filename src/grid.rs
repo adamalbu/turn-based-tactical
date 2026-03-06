@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::units::PlayerUnit;
+use crate::units::{self, MoveShape, PlayerSelected, PlayerUnit};
 
 pub const TILE_SIZE: f32 = 64.0;
 pub const MAP_WIDTH: u32 = 12;
@@ -23,7 +23,7 @@ impl From<Tile> for Vec2 {
     }
 }
 
-#[derive(Component, PartialEq, Debug)]
+#[derive(Component, Clone, Copy, PartialEq, Debug)]
 pub struct GridPosition {
     pub x: i32,
     pub y: i32,
@@ -118,14 +118,16 @@ pub fn spawn(
                 .observe(
                     |event: On<Pointer<Click>>,
                      tiles: Query<&Tile>,
-                     players: Query<(&PlayerUnit, &GridPosition)>| {
+                     players: Query<(Entity, &GridPosition), With<PlayerUnit>>,
+                     mut ev_player_selected: MessageWriter<units::PlayerSelected>| {
                         let clicked_coords: GridPosition = tiles.get(event.entity).unwrap().into();
 
-                        if let Some((player, unit)) = players
+                        if let Some((player, _)) = players
                             .iter()
-                            .find(|(player, position)| **position == clicked_coords)
+                            .find(|(_, position)| **position == clicked_coords)
                         {
-                            println!("clicked player")
+                            ev_player_selected.write(units::PlayerSelected(player));
+                            println!("clicked player");
                         };
                     },
                 );
@@ -149,5 +151,43 @@ fn update_overlay_material<E: EntityEvent>(
 
         let mut material = highlights.get_mut(*child).unwrap();
         *material = MeshMaterial2d(new_material.clone());
+    }
+}
+
+pub fn show_player_move_range(
+    mut ev_player_selected: MessageReader<PlayerSelected>,
+    query: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
+    tiles: Query<(&Children, &Tile)>,
+    mut highlights: Query<&mut MeshMaterial2d<ColorMaterial>, With<TileHighlight>>,
+    overlay_material: Res<TileOverlayMaterials>,
+) {
+    for ev in ev_player_selected.read() {
+        dbg!(&ev);
+        let (origin, movement) = query.get(ev.0).unwrap();
+        show_move_range(
+            *origin,
+            movement.range,
+            tiles,
+            &mut highlights,
+            &overlay_material,
+        );
+    }
+}
+
+pub fn show_move_range(
+    origin: GridPosition,
+    range: MoveShape,
+    tiles: Query<(&Children, &Tile)>,
+    highlights: &mut Query<&mut MeshMaterial2d<ColorMaterial>, With<TileHighlight>>,
+    overlay_material: &Res<TileOverlayMaterials>,
+) {
+    let range_material = overlay_material.range.clone();
+
+    for (children, tile) in tiles {
+        if range.contains(origin, tile.into()) {
+            let child = children.first().unwrap();
+            let mut material = highlights.get_mut(*child).unwrap();
+            *material = MeshMaterial2d(range_material.clone())
+        }
     }
 }
