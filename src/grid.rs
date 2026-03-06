@@ -18,21 +18,33 @@ pub struct Tile {
 #[derive(Component)]
 pub struct TileHighlight;
 
+#[derive(Resource)]
+pub struct TileOverlayMaterials {
+    none: Handle<ColorMaterial>,
+    hover: Handle<ColorMaterial>,
+    range: Handle<ColorMaterial>,
+}
+
 pub fn spawn(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
+    let overlay_materials = TileOverlayMaterials {
+        none: materials.add(Color::NONE),
+        hover: materials.add(Color::srgba(1.0, 1.0, 0.0, 0.5)),
+        range: materials.add(Color::srgba(0.0, 1.0, 0.0, 0.5)),
+    };
+
     let hover_mesh = meshes.add(Rectangle::new(TILE_SIZE, TILE_SIZE));
 
     let tile_mesh = meshes.add(Rectangle::new(TILE_SIZE, TILE_SIZE).to_ring(THICKNESS));
     let tile_material = materials.add(Color::BLACK);
 
-    let highlight_mesh = meshes.add(Rectangle::new(
+    let overlay_mesh = meshes.add(Rectangle::new(
         TILE_SIZE - THICKNESS * 2.0,
         TILE_SIZE - THICKNESS * 2.0,
     ));
-    let highlight_material = materials.add(Color::srgba(1.0, 0.93, 0.34, 0.5));
 
     let offset = Vec2::new(
         -(MAP_WIDTH as f32 * TILE_SIZE) / 2.0 + TILE_SIZE / 2.0,
@@ -54,11 +66,10 @@ pub fn spawn(
                 ))
                 .with_children(|parent| {
                     parent.spawn((
-                        Mesh2d(highlight_mesh.clone()),
-                        MeshMaterial2d(highlight_material.clone()),
+                        Mesh2d(overlay_mesh.clone()),
+                        MeshMaterial2d(overlay_materials.none.clone()),
                         TileHighlight,
                         Transform::from_xyz(0.0, 0.0, -0.1),
-                        Visibility::Hidden,
                     ));
 
                     parent.spawn((
@@ -67,31 +78,31 @@ pub fn spawn(
                         Transform::from_xyz(0.0, 0.0, -0.2),
                     ));
                 })
-                .observe(
-                    |mut over: On<Pointer<Over>>,
-                     query: Query<&Children, With<Tile>>,
-                     mut highlights: Query<&mut Visibility, With<TileHighlight>>| {
-                        let children = query.get(over.entity).unwrap();
-                        let child = children.first().unwrap();
-
-                        let mut vis = highlights.get_mut(*child).unwrap();
-                        *vis = Visibility::Visible;
-
-                        over.propagate(false);
-                    },
-                ).observe(
-                    |mut out: On<Pointer<Out>>,
-                     query: Query<&Children, With<Tile>>,
-                     mut highlights: Query<&mut Visibility, With<TileHighlight>>| {
-                        let children = query.get(out.entity).unwrap();
-                        let child = children.first().unwrap();
-
-                        let mut vis = highlights.get_mut(*child).unwrap();
-                        *vis = Visibility::Hidden;
-
-                        out.propagate(false);
-                    },
-                );
+                .observe(update_overlay_material::<Pointer<Over>>(
+                    overlay_materials.hover.clone(),
+                ))
+                .observe(update_overlay_material::<Pointer<Out>>(
+                    overlay_materials.none.clone(),
+                ));
         }
+    }
+
+    commands.insert_resource(overlay_materials);
+}
+
+#[allow(clippy::type_complexity)]
+fn update_overlay_material<E: EntityEvent>(
+    new_material: Handle<ColorMaterial>,
+) -> impl Fn(
+    On<E>,
+    Query<&Children, With<Tile>>,
+    Query<&mut MeshMaterial2d<ColorMaterial>, With<TileHighlight>>,
+) {
+    move |event, query, mut highlights| {
+        let children = query.get(event.event_target()).unwrap();
+        let child = children.first().unwrap();
+
+        let mut material = highlights.get_mut(*child).unwrap();
+        *material = MeshMaterial2d(new_material.clone());
     }
 }
