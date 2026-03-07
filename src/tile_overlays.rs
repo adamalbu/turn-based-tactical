@@ -46,7 +46,6 @@ pub struct TileOverlayMaterials {
     pub hover: Handle<ColorMaterial>,
 }
 
-#[allow(clippy::type_complexity)]
 pub fn update_overlay_material<E: EntityEvent>(
     layer: OverlayLayer,
     enabled: bool,

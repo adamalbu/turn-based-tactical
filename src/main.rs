@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use bevy::prelude::*;
 
 mod grid;
@@ -34,22 +36,19 @@ fn main() {
         .insert_resource(ClearColor(Color::WHITE))
         .init_resource::<units::SelectedUnit>()
         .init_resource::<interaction::SelectedPosition>()
+        .init_resource::<units::PlayerAssets>()
         .init_state::<PlayerTurnState>()
         .add_message::<grid::GridClicked>()
         .add_message::<ui::MoveButtonClicked>()
         .add_systems(
             Startup,
-            (
-                spawn_camera,
-                grid::spawn,
-                units::spawn_player.after(grid::spawn),
-            ),
+            (spawn_camera, grid::spawn, units::setup.after(grid::spawn)),
         )
         .add_systems(
             OnEnter(PlayerTurnState::SelectedUnit),
-            interaction::player_selected,
+            interaction::selected_player,
         )
-        .add_systems(OnEnter(PlayerTurnState::None), interaction::deselect)
+        .add_systems(OnEnter(PlayerTurnState::None), interaction::deselect_system)
         .add_systems(
             OnEnter(PlayerTurnState::SelectedPosition),
             (interaction::selected_position, ui::spawn_action_bar),
