@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 
 mod grid;
+mod interaction;
+mod tile_overlays;
 mod units;
 
 #[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -29,9 +31,9 @@ fn main() {
             MeshPickingPlugin,
         ))
         .insert_resource(ClearColor(Color::WHITE))
-        .insert_resource(units::SelectedUnit::default())
-        .insert_resource(grid::SelectedPosition::default())
-        .insert_state(PlayerTurnState::default())
+        .init_resource::<units::SelectedUnit>()
+        .init_resource::<interaction::SelectedPosition>()
+        .init_state::<PlayerTurnState>()
         .add_message::<grid::GridClicked>()
         .add_systems(
             Startup,
@@ -43,13 +45,19 @@ fn main() {
         )
         .add_systems(
             OnEnter(PlayerTurnState::SelectedUnit),
-            grid::player_selected,
+            interaction::player_selected,
         )
-        .add_systems(OnEnter(PlayerTurnState::None), grid::deselect)
+        .add_systems(OnEnter(PlayerTurnState::None), interaction::deselect)
         .add_systems(
             OnEnter(PlayerTurnState::SelectedPosition),
-            grid::selected_position,
+            interaction::selected_position,
         )
-        .add_systems(Update, (grid::update_overlay_materials, grid::grid_clicked))
+        .add_systems(
+            Update,
+            (
+                tile_overlays::update_overlay_materials,
+                interaction::grid_clicked,
+            ),
+        )
         .run();
 }

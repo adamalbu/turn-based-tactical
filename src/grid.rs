@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 
-use crate::{
-    PlayerTurnState,
-    units::{self, PlayerUnit},
+use crate::tile_overlays::{
+    OverlayLayer, TileOverlay, TileOverlayMaterials, update_overlay_material,
 };
+use crate::units::PlayerUnit;
 
 pub const TILE_SIZE: f32 = 64.0;
 pub const MAP_WIDTH: u32 = 12;
@@ -16,9 +16,6 @@ pub struct GridClicked {
     pub position: GridPosition,
     pub entity: Option<Entity>,
 }
-
-#[derive(Resource, Default, Deref, DerefMut, Clone, Copy)]
-pub struct SelectedPosition(pub Option<GridPosition>);
 
 #[derive(Component)]
 pub struct Tile {
@@ -57,49 +54,6 @@ impl From<&Tile> for GridPosition {
             y: value.y,
         }
     }
-}
-
-#[derive(Clone, Copy)]
-pub enum OverlayLayer {
-    Range,
-    Selected,
-    Hover,
-}
-
-#[derive(Component, Default, Clone, Copy)]
-pub struct TileOverlay {
-    pub range: bool,
-    pub selected: bool,
-    pub hover: bool,
-}
-
-impl TileOverlay {
-    fn set_layer(&mut self, layer: OverlayLayer, enabled: bool) {
-        match layer {
-            OverlayLayer::Range => self.range = enabled,
-            OverlayLayer::Selected => self.selected = enabled,
-            OverlayLayer::Hover => self.hover = enabled,
-        }
-    }
-    fn get_material(&self, materials: &Res<TileOverlayMaterials>) -> Handle<ColorMaterial> {
-        if self.hover {
-            materials.hover.clone()
-        } else if self.selected {
-            materials.selected.clone()
-        } else if self.range {
-            materials.range.clone()
-        } else {
-            materials.none.clone()
-        }
-    }
-}
-
-#[derive(Resource, Clone)]
-pub struct TileOverlayMaterials {
-    none: Handle<ColorMaterial>,
-    range: Handle<ColorMaterial>,
-    selected: Handle<ColorMaterial>,
-    hover: Handle<ColorMaterial>,
 }
 
 pub fn spawn(
@@ -191,129 +145,4 @@ pub fn spawn(
     }
 
     commands.insert_resource(overlay_materials);
-}
-
-#[allow(clippy::type_complexity)]
-fn update_overlay_material<E: EntityEvent>(
-    layer: OverlayLayer,
-    enabled: bool,
-) -> impl Fn(On<E>, Query<&Children, With<Tile>>, Query<&mut TileOverlay>) {
-    move |event, query, mut overlays| {
-        let children = query.get(event.event_target()).unwrap();
-        let child = children.first().unwrap();
-
-        let mut overlay = overlays.get_mut(*child).unwrap();
-        overlay.set_layer(layer, enabled);
-    }
-}
-
-pub fn set_overlay_at(
-    pos: GridPosition,
-    layer: OverlayLayer,
-    enabled: bool,
-    tiles: &Query<(&Tile, &Children)>,
-    overlays: &mut Query<&mut TileOverlay>,
-) {
-    for (tile, children) in tiles {
-        if tile.x == pos.x && tile.y == pos.y {
-            let child = children.first().unwrap();
-            if let Ok(mut overlay) = overlays.get_mut(*child) {
-                overlay.set_layer(layer, enabled);
-            }
-            return;
-        }
-    }
-}
-
-pub fn grid_clicked(
-    mut ev_grid_clicked: MessageReader<GridClicked>,
-    mut next_state: ResMut<NextState<PlayerTurnState>>,
-    mut selected_unit: ResMut<units::SelectedUnit>,
-    mut selected_position: ResMut<SelectedPosition>,
-    query: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
-
-    mut overlays: Query<&mut TileOverlay>,
-) {
-    for ev in ev_grid_clicked.read() {
-        for mut overlay in overlays.iter_mut() {
-            overlay.selected = false;
-        }
-
-        if let Some(entity) = ev.entity {
-            selected_unit.0 = Some(entity);
-            next_state.set(PlayerTurnState::SelectedUnit);
-            return;
-        }
-
-        if let Some(player_entity) = **selected_unit {
-            let (origin, movement) = query.get(player_entity).unwrap();
-            let range = movement.range;
-
-            if range.contains(*origin, ev.position) {
-                selected_position.0 = Some(ev.position);
-                next_state.set(PlayerTurnState::SelectedPosition);
-                return;
-            }
-        }
-
-        selected_unit.0 = None;
-        next_state.set(PlayerTurnState::None);
-    }
-}
-
-pub fn deselect(mut overlays: Query<&mut TileOverlay>) {
-    for mut overlay in overlays.iter_mut() {
-        overlay.range = false;
-        overlay.selected = false;
-    }
-}
-
-pub fn player_selected(
-    selected_unit: ResMut<units::SelectedUnit>,
-    query: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
-    tiles: Query<(&Children, &Tile)>,
-    mut overlays: Query<&mut TileOverlay>,
-) {
-    let entity = selected_unit.unwrap();
-    let (origin, movement) = query.get(entity).unwrap();
-    let range = movement.range;
-
-    for (children, tile) in tiles {
-        let dx = (tile.x - origin.x).abs();
-        let dy = (tile.y - origin.y).abs();
-
-        let child = children.first().unwrap();
-        let mut overlay = overlays.get_mut(*child).unwrap();
-
-        if dx == 0 && dy == 0 {
-            overlay.selected = true;
-        }
-
-        if range.contains(*origin, tile.into()) {
-            overlay.set_layer(OverlayLayer::Range, true);
-        }
-    }
-}
-
-pub fn selected_position(
-    selected_position: Res<SelectedPosition>,
-    tiles: Query<(&Tile, &Children)>,
-    mut overlays: Query<&mut TileOverlay>,
-) {
-    set_overlay_at(
-        selected_position.unwrap(),
-        OverlayLayer::Selected,
-        true,
-        &tiles,
-        &mut overlays,
-    );
-}
-
-pub fn update_overlay_materials(
-    overlays: Query<(&TileOverlay, &mut MeshMaterial2d<ColorMaterial>), Changed<TileOverlay>>,
-    materials: Res<TileOverlayMaterials>,
-) {
-    for (overlay, mut material) in overlays {
-        material.0 = overlay.get_material(&materials);
-    }
 }
