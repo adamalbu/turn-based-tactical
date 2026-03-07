@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::grid::{GridPosition, Tile};
+use crate::{
+    grid::{GridPosition, Tile},
+    interaction::ValidMovement,
+};
 
 #[derive(Clone, Copy)]
 pub enum OverlayLayer {
@@ -11,7 +14,7 @@ pub enum OverlayLayer {
 
 #[derive(Component, Default, Clone, Copy)]
 pub struct TileOverlay {
-    pub range: bool,
+    range: bool,
     pub selected: bool,
     pub hover: bool,
 }
@@ -78,9 +81,24 @@ pub fn set_overlay_at(
 }
 
 pub fn update_overlay_materials(
-    overlays: Query<(&TileOverlay, &mut MeshMaterial2d<ColorMaterial>), Changed<TileOverlay>>,
+    mut overlays: Query<(&mut TileOverlay, &mut MeshMaterial2d<ColorMaterial>)>,
+    movement_tiles: Query<(&Tile, &Children), With<ValidMovement>>,
+    non_movement_tiles: Query<(&Tile, &Children), Without<ValidMovement>>,
     materials: Res<TileOverlayMaterials>,
 ) {
+    for (_, children) in movement_tiles {
+        let child = children.first().unwrap();
+        if let Ok((mut overlay, _)) = overlays.get_mut(*child) {
+            overlay.range = true;
+        }
+    }
+
+    for (_, children) in non_movement_tiles {
+        let child = children.first().unwrap();
+        if let Ok((mut overlay, _)) = overlays.get_mut(*child) {
+            overlay.range = false;
+        }
+    }
     for (overlay, mut material) in overlays {
         material.0 = overlay.get_material(&materials);
     }

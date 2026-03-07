@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::tile_overlays::{
     OverlayLayer, TileOverlay, TileOverlayMaterials, update_overlay_material,
 };
-use crate::units::PlayerUnit;
+use crate::units::{HasMoved, PlayerUnit};
 
 pub const TILE_SIZE: f32 = 64.0;
 pub const MAP_WIDTH: u32 = 12;
@@ -127,7 +127,10 @@ pub fn spawn(
                 .observe(
                     |event: On<Pointer<Click>>,
                      tiles: Query<&Tile>,
-                     players: Query<(Entity, &GridPosition), With<PlayerUnit>>,
+                     players: Query<
+                        (Entity, &GridPosition),
+                        (With<PlayerUnit>, Without<HasMoved>),
+                    >,
                      mut ev_grid_clicked: MessageWriter<GridClicked>| {
                         let clicked_coords: GridPosition = tiles.get(event.entity).unwrap().into();
 

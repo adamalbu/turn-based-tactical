@@ -40,6 +40,7 @@ fn main() {
         .init_state::<PlayerTurnState>()
         .add_message::<grid::GridClicked>()
         .add_message::<ui::MoveButtonClicked>()
+        .add_observer(interaction::on_deselect)
         .add_systems(
             Startup,
             (spawn_camera, grid::spawn, units::setup.after(grid::spawn)),
@@ -48,7 +49,7 @@ fn main() {
             OnEnter(PlayerTurnState::SelectedUnit),
             interaction::selected_player,
         )
-        .add_systems(OnEnter(PlayerTurnState::None), interaction::deselect_system)
+        .add_systems(OnEnter(PlayerTurnState::None), interaction::deselect)
         .add_systems(
             OnEnter(PlayerTurnState::SelectedPosition),
             (interaction::selected_position, ui::spawn_action_bar),
@@ -63,9 +64,10 @@ fn main() {
                 tile_overlays::update_overlay_materials,
                 interaction::grid_clicked,
                 ui::handle_move_button.run_if(in_state(PlayerTurnState::SelectedPosition)),
-                units::move_unit.run_if(in_state(PlayerTurnState::SelectedPosition)),
+                (units::move_unit).run_if(in_state(PlayerTurnState::SelectedPosition)),
                 units::update_positions,
             ),
         )
+        .add_systems(PostUpdate, units::handle_player_turn)
         .run();
 }

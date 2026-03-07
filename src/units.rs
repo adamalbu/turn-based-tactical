@@ -20,6 +20,9 @@ pub struct PlayerAssets {
 }
 
 #[derive(Component)]
+pub struct HasMoved;
+
+#[derive(Component)]
 pub struct EnemyUnit;
 
 #[derive(Component)]
@@ -108,6 +111,7 @@ pub fn update_positions(
 }
 
 pub fn move_unit(
+    mut commands: Commands,
     selected_unit: Res<SelectedUnit>,
     target_pos: Res<SelectedPosition>,
     mut player_transform: Query<&mut GridPosition, With<PlayerUnit>>,
@@ -118,6 +122,17 @@ pub fn move_unit(
         let mut transform = player_transform.get_mut(selected_unit.unwrap()).unwrap();
         *transform = target_pos.0.unwrap();
 
+        commands.entity(selected_unit.unwrap()).insert(HasMoved);
+
         next_state.set(PlayerTurnState::None);
+    }
+}
+
+pub fn handle_player_turn(
+    mut ev_move_clicked: MessageReader<MoveButtonClicked>,
+    actionable_units: Query<&PlayerUnit, Without<HasMoved>>,
+) {
+    for _ in ev_move_clicked.read() {
+        dbg!(actionable_units.count());
     }
 }
