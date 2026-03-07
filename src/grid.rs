@@ -9,7 +9,10 @@ pub const MAP_HEIGHT: u32 = 9;
 const THICKNESS: f32 = 2.0;
 
 #[derive(Message, Debug, Clone, Copy)]
-pub struct GridClicked(pub Option<Entity>);
+pub struct GridClicked {
+    pub position: GridPosition,
+    pub entity: Option<Entity>,
+}
 
 #[derive(Component)]
 pub struct Tile {
@@ -53,12 +56,14 @@ impl From<&Tile> for GridPosition {
 #[derive(Clone, Copy)]
 pub enum OverlayLayer {
     Range,
+    Selected,
     Hover,
 }
 
 #[derive(Component, Default, Clone, Copy)]
 pub struct TileOverlay {
     pub range: bool,
+    pub selected: bool,
     pub hover: bool,
 }
 
@@ -66,12 +71,15 @@ impl TileOverlay {
     fn set_layer(&mut self, layer: OverlayLayer, enabled: bool) {
         match layer {
             OverlayLayer::Range => self.range = enabled,
+            OverlayLayer::Selected => self.selected = enabled,
             OverlayLayer::Hover => self.hover = enabled,
         }
     }
     fn get_material(&self, materials: &Res<TileOverlayMaterials>) -> Handle<ColorMaterial> {
         if self.hover {
             materials.hover.clone()
+        } else if self.selected {
+            materials.selected.clone()
         } else if self.range {
             materials.range.clone()
         } else {
@@ -84,6 +92,7 @@ impl TileOverlay {
 pub struct TileOverlayMaterials {
     none: Handle<ColorMaterial>,
     range: Handle<ColorMaterial>,
+    selected: Handle<ColorMaterial>,
     hover: Handle<ColorMaterial>,
 }
 
@@ -95,6 +104,7 @@ pub fn spawn(
     let overlay_materials = TileOverlayMaterials {
         none: materials.add(Color::NONE),
         range: materials.add(Color::srgba(0.0, 1.0, 0.0, 0.5)),
+        selected: materials.add(Color::srgba(0.0, 0.0, 1.0, 0.5)),
         hover: materials.add(Color::srgba(1.0, 1.0, 0.0, 0.5)),
     };
 
@@ -159,9 +169,15 @@ pub fn spawn(
                             .iter()
                             .find(|(_, position)| **position == clicked_coords)
                         {
-                            ev_grid_clicked.write(GridClicked(Some(player)));
+                            ev_grid_clicked.write(GridClicked {
+                                position: clicked_coords,
+                                entity: Some(player),
+                            });
                         } else {
-                            ev_grid_clicked.write(GridClicked(None));
+                            ev_grid_clicked.write(GridClicked {
+                                position: clicked_coords,
+                                entity: None,
+                            });
                         };
                     },
                 );
@@ -192,20 +208,29 @@ pub fn grid_clicked(
     mut overlays: Query<&mut TileOverlay>,
 ) {
     for ev in ev_grid_clicked.read() {
-        if let Some(entity) = ev.0 {
+        if let Some(entity) = ev.entity {
             let (origin, movement) = query.get(entity).unwrap();
             let range = movement.range;
 
             for (children, tile) in tiles {
+                let dx = (tile.x - origin.x).abs();
+                let dy = (tile.y - origin.y).abs();
+
+                let child = children.first().unwrap();
+                let mut overlay = overlays.get_mut(*child).unwrap();
+
+                if dx == 0 && dy == 0 {
+                    overlay.selected = true;
+                }
+
                 if range.contains(*origin, tile.into()) {
-                    let child = children.first().unwrap();
-                    let mut overlay = overlays.get_mut(*child).unwrap();
                     overlay.set_layer(OverlayLayer::Range, true);
                 }
             }
         } else {
             for mut overlay in overlays.iter_mut() {
                 overlay.range = false;
+                overlay.selected = false;
             }
         }
     }
