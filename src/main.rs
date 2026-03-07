@@ -7,7 +7,8 @@ mod units;
 pub enum PlayerTurnState {
     #[default]
     None,
-    Selected,
+    SelectedUnit,
+    SelectedPosition,
 }
 
 pub fn spawn_camera(mut commands: Commands) {
@@ -29,6 +30,7 @@ fn main() {
         ))
         .insert_resource(ClearColor(Color::WHITE))
         .insert_resource(units::SelectedUnit::default())
+        .insert_resource(grid::SelectedPosition::default())
         .insert_state(PlayerTurnState::default())
         .add_message::<grid::GridClicked>()
         .add_systems(
@@ -39,8 +41,15 @@ fn main() {
                 units::spawn_player.after(grid::spawn),
             ),
         )
-        .add_systems(OnEnter(PlayerTurnState::Selected), grid::player_selected)
+        .add_systems(
+            OnEnter(PlayerTurnState::SelectedUnit),
+            grid::player_selected,
+        )
         .add_systems(OnEnter(PlayerTurnState::None), grid::deselect)
+        .add_systems(
+            OnEnter(PlayerTurnState::SelectedPosition),
+            grid::selected_position,
+        )
         .add_systems(Update, (grid::update_overlay_materials, grid::grid_clicked))
         .run();
 }
