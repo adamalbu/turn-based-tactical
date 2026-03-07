@@ -73,8 +73,9 @@ pub fn setup(
 
     let player_assets = &player_assets.into();
 
-    spawn_player(GridPosition { x: 0, y: 0 }, &mut commands, player_assets);
-    spawn_player(GridPosition { x: 4, y: 3 }, &mut commands, player_assets);
+    spawn_player(GridPosition { x: 1, y: 1 }, &mut commands, player_assets);
+    spawn_player(GridPosition { x: 1, y: 3 }, &mut commands, player_assets);
+    spawn_player(GridPosition { x: 1, y: 5 }, &mut commands, player_assets);
 }
 
 pub fn spawn_player(
