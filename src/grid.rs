@@ -38,6 +38,12 @@ pub struct GridPosition {
     pub y: i32,
 }
 
+impl GridPosition {
+    pub fn as_vec3(&self, z: f32) -> Vec3 {
+        Vec3::new(self.x as f32, self.y as f32, z)
+    }
+}
+
 impl From<Tile> for GridPosition {
     fn from(value: Tile) -> Self {
         Self {

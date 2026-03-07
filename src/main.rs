@@ -3,6 +3,7 @@ use bevy::prelude::*;
 mod grid;
 mod interaction;
 mod tile_overlays;
+mod ui;
 mod units;
 
 #[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -35,6 +36,7 @@ fn main() {
         .init_resource::<interaction::SelectedPosition>()
         .init_state::<PlayerTurnState>()
         .add_message::<grid::GridClicked>()
+        .add_message::<ui::MoveButtonClicked>()
         .add_systems(
             Startup,
             (
@@ -50,13 +52,20 @@ fn main() {
         .add_systems(OnEnter(PlayerTurnState::None), interaction::deselect)
         .add_systems(
             OnEnter(PlayerTurnState::SelectedPosition),
-            interaction::selected_position,
+            (interaction::selected_position, ui::spawn_action_bar),
+        )
+        .add_systems(
+            OnExit(PlayerTurnState::SelectedPosition),
+            ui::despawn_action_bar,
         )
         .add_systems(
             Update,
             (
                 tile_overlays::update_overlay_materials,
                 interaction::grid_clicked,
+                ui::handle_move_button.run_if(in_state(PlayerTurnState::SelectedPosition)),
+                units::move_unit.run_if(in_state(PlayerTurnState::SelectedPosition)),
+                units::update_positions,
             ),
         )
         .run();
