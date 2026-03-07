@@ -13,6 +13,8 @@ pub enum GameState {
     #[default]
     PlayerTurn,
     EnemyTurn,
+    Win,
+    Lose,
 }
 
 #[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -93,5 +95,6 @@ fn main() {
                 units::update_positions,
             ),
         )
+        .add_systems(PostUpdate, units::check_win)
         .run();
 }

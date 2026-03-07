@@ -36,10 +36,9 @@ pub struct EnemyAssets {
     pub material: Handle<ColorMaterial>,
 }
 
-#[derive(Component)]
+#[derive(Component, Clone, Copy)]
 pub struct Health {
     pub hp: u32,
-    pub max_hp: u32,
 }
 
 #[derive(Component)]
@@ -135,6 +134,11 @@ pub fn spawn_enemy(
         Movement {
             range: RangeShape::Square(3),
         },
+        Attack {
+            damage: 3,
+            range: RangeShape::Square(5),
+        },
+        Health { hp: 8 },
         spawn_pos,
     ));
 }
@@ -185,17 +189,39 @@ pub fn handle_player_turn(
     }
 }
 
+pub fn check_win(enemies: Query<&EnemyUnit>, mut next_state: ResMut<NextState<GameState>>) {
+    if enemies.count() == 0 {
+        next_state.set(GameState::Win);
+    }
+}
+
 pub fn on_enemy_turn(
-    enemies: Query<&mut GridPosition, (With<EnemyUnit>, Without<HasMoved>)>,
-    players_positions: Query<&GridPosition, (With<PlayerUnit>, Without<EnemyUnit>)>,
+    mut commands: Commands,
+    enemies: Query<
+        (Entity, &mut GridPosition, Option<&mut Health>),
+        (With<EnemyUnit>, Without<HasMoved>),
+    >,
+    players: Query<(&GridPosition, &Attack), (With<PlayerUnit>, Without<EnemyUnit>)>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     bevy::platform::thread::sleep(Duration::from_millis(500));
 
-    for mut pos in enemies {
-        let target = players_positions
+    for (entity, mut pos, mut health) in enemies {
+        for (player_pos, attack) in players {
+            if attack.range.contains(*player_pos, *pos)
+                && let Some(ref mut health) = health
+            {
+                if health.hp <= attack.damage {
+                    commands.entity(entity).despawn();
+                } else {
+                    health.hp -= attack.damage;
+                }
+            }
+        }
+
+        let (target, _) = players
             .iter()
-            .min_by_key(|pp| (pp.x - pos.x).abs() + (pp.y - pos.y).abs())
+            .min_by_key(|(pp, _)| (pp.x - pos.x).abs() + (pp.y - pos.y).abs())
             .unwrap();
 
         // TODO: use movement range instead
