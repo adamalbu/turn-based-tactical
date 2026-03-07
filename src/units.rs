@@ -130,9 +130,16 @@ pub fn move_unit(
 
 pub fn handle_player_turn(
     mut ev_move_clicked: MessageReader<MoveButtonClicked>,
+    mut commands: Commands,
+    units: Query<Entity, (With<PlayerUnit>, With<HasMoved>)>,
     actionable_units: Query<&PlayerUnit, Without<HasMoved>>,
 ) {
     for _ in ev_move_clicked.read() {
-        dbg!(actionable_units.count());
+        if actionable_units.count() == 0 {
+            // TODO: Enemy turn
+            for entity in units {
+                commands.entity(entity).remove::<HasMoved>();
+            }
+        }
     }
 }

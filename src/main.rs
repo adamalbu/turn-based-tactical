@@ -49,7 +49,10 @@ fn main() {
             OnEnter(PlayerTurnState::SelectedUnit),
             interaction::selected_player,
         )
-        .add_systems(OnEnter(PlayerTurnState::None), interaction::deselect)
+        .add_systems(
+            OnEnter(PlayerTurnState::None),
+            (interaction::deselect, units::handle_player_turn),
+        )
         .add_systems(
             OnEnter(PlayerTurnState::SelectedPosition),
             (interaction::selected_position, ui::spawn_action_bar),
@@ -69,6 +72,5 @@ fn main() {
                 units::update_positions,
             ),
         )
-        .add_systems(PostUpdate, units::handle_player_turn)
         .run();
 }
