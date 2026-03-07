@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::units::{self, PlayerUnit};
+use crate::{
+    PlayerTurnState,
+    units::{self, PlayerUnit},
+};
 
 pub const TILE_SIZE: f32 = 64.0;
 pub const MAP_WIDTH: u32 = 12;
@@ -203,35 +206,50 @@ fn update_overlay_material<E: EntityEvent>(
 
 pub fn grid_clicked(
     mut ev_grid_clicked: MessageReader<GridClicked>,
+    mut next_state: ResMut<NextState<PlayerTurnState>>,
+    mut selected_unit: ResMut<units::SelectedUnit>,
+) {
+    for ev in ev_grid_clicked.read() {
+        if let Some(entity) = ev.entity {
+            selected_unit.0 = Some(entity);
+            next_state.set(PlayerTurnState::Selected);
+        } else {
+            selected_unit.0 = None;
+            next_state.set(PlayerTurnState::None);
+        }
+    }
+}
+
+pub fn deselect(mut overlays: Query<&mut TileOverlay>) {
+    for mut overlay in overlays.iter_mut() {
+        overlay.range = false;
+        overlay.selected = false;
+    }
+}
+
+pub fn player_selected(
+    selected_unit: ResMut<units::SelectedUnit>,
     query: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
     tiles: Query<(&Children, &Tile)>,
     mut overlays: Query<&mut TileOverlay>,
 ) {
-    for ev in ev_grid_clicked.read() {
-        if let Some(entity) = ev.entity {
-            let (origin, movement) = query.get(entity).unwrap();
-            let range = movement.range;
+    let entity = selected_unit.unwrap();
+    let (origin, movement) = query.get(entity).unwrap();
+    let range = movement.range;
 
-            for (children, tile) in tiles {
-                let dx = (tile.x - origin.x).abs();
-                let dy = (tile.y - origin.y).abs();
+    for (children, tile) in tiles {
+        let dx = (tile.x - origin.x).abs();
+        let dy = (tile.y - origin.y).abs();
 
-                let child = children.first().unwrap();
-                let mut overlay = overlays.get_mut(*child).unwrap();
+        let child = children.first().unwrap();
+        let mut overlay = overlays.get_mut(*child).unwrap();
 
-                if dx == 0 && dy == 0 {
-                    overlay.selected = true;
-                }
+        if dx == 0 && dy == 0 {
+            overlay.selected = true;
+        }
 
-                if range.contains(*origin, tile.into()) {
-                    overlay.set_layer(OverlayLayer::Range, true);
-                }
-            }
-        } else {
-            for mut overlay in overlays.iter_mut() {
-                overlay.range = false;
-                overlay.selected = false;
-            }
+        if range.contains(*origin, tile.into()) {
+            overlay.set_layer(OverlayLayer::Range, true);
         }
     }
 }

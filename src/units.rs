@@ -2,6 +2,9 @@ use bevy::prelude::*;
 
 use crate::grid::{self, GridPosition};
 
+#[derive(Resource, Default, Deref, DerefMut, Clone, Copy)]
+pub struct SelectedUnit(pub Option<Entity>);
+
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PlayerUnit;
 
