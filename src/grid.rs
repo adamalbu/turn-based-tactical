@@ -1,3 +1,5 @@
+use std::ops::Sub;
+
 use bevy::prelude::*;
 
 use crate::tile_overlays::{
@@ -48,6 +50,17 @@ impl From<Tile> for Vec2 {
 pub struct GridPosition {
     pub x: i32,
     pub y: i32,
+}
+
+impl Sub for GridPosition {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            x: (self.x - rhs.x),
+            y: (self.y - rhs.y),
+        }
+    }
 }
 
 impl From<Tile> for GridPosition {

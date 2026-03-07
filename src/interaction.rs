@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::grid::{GridClicked, GridPosition, Tile};
 use crate::tile_overlays::{OverlayLayer, set_overlay_at};
 
+use crate::units::Unit;
 use crate::{
     PlayerTurnState,
     units::{self, PlayerUnit},
@@ -77,7 +78,7 @@ pub fn selected_player(
     mut commands: Commands,
     selected_unit: ResMut<units::SelectedUnit>,
     player: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
-    player_positions: Query<&GridPosition, With<PlayerUnit>>,
+    unit_positions: Query<&GridPosition, With<Unit>>,
     tiles: Query<(Entity, &mut Tile)>,
 ) {
     let entity = selected_unit.unwrap();
@@ -93,11 +94,11 @@ pub fn selected_player(
         }
 
         if range.contains(*origin, (*tile).into()) {
-            let over_player = player_positions
+            let over_unit = unit_positions
                 .iter()
                 .any(|t| t == &GridPosition::from(*tile));
 
-            if !over_player {
+            if !over_unit {
                 commands.entity(tile_entity).insert(ValidMovement);
             }
         }

@@ -1,7 +1,9 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 
 use crate::{
-    PlayerTurnState,
+    GameState, PlayerTurnState,
     grid::{self, GridPosition},
     interaction::SelectedPosition,
     ui::MoveButtonClicked,
@@ -10,7 +12,10 @@ use crate::{
 #[derive(Resource, Default, Deref, DerefMut, Clone, Copy)]
 pub struct SelectedUnit(pub Option<Entity>);
 
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Component)]
+pub struct Unit;
+
+#[derive(Component)]
 pub struct PlayerUnit;
 
 #[derive(Resource, Default)]
@@ -24,6 +29,12 @@ pub struct HasMoved;
 
 #[derive(Component)]
 pub struct EnemyUnit;
+
+#[derive(Resource, Default)]
+pub struct EnemyAssets {
+    pub mesh: Handle<Mesh>,
+    pub material: Handle<ColorMaterial>,
+}
 
 #[derive(Component)]
 pub struct Health {
@@ -67,15 +78,23 @@ pub fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut player_assets: ResMut<PlayerAssets>,
+    mut enemy_assets: ResMut<EnemyAssets>,
 ) {
     player_assets.mesh = meshes.add(Circle::new(grid::TILE_SIZE / 2.5));
     player_assets.material = materials.add(Color::srgb(1.0, 0.0, 0.0));
 
-    let player_assets = &player_assets.into();
+    enemy_assets.mesh = meshes.add(Circle::new(grid::TILE_SIZE / 2.5));
+    enemy_assets.material = materials.add(Color::srgb(0.0, 1.0, 0.0));
 
-    spawn_player(GridPosition { x: 1, y: 1 }, &mut commands, player_assets);
-    spawn_player(GridPosition { x: 1, y: 3 }, &mut commands, player_assets);
-    spawn_player(GridPosition { x: 1, y: 5 }, &mut commands, player_assets);
+    let player_assets = &player_assets.into();
+    let enemy_assets = &enemy_assets.into();
+
+    spawn_player(GridPosition { x: 1, y: 2 }, &mut commands, player_assets);
+    // spawn_player(GridPosition { x: 1, y: 4 }, &mut commands, player_assets);
+    // spawn_player(GridPosition { x: 1, y: 6 }, &mut commands, player_assets);
+
+    spawn_enemy(GridPosition { x: 10, y: 3 }, &mut commands, enemy_assets);
+    spawn_enemy(GridPosition { x: 10, y: 5 }, &mut commands, enemy_assets);
 }
 
 pub fn spawn_player(
@@ -87,6 +106,7 @@ pub fn spawn_player(
         Mesh2d(player_assets.mesh.clone()),
         MeshMaterial2d(player_assets.material.clone()),
         Transform::default(),
+        Unit,
         PlayerUnit,
         Movement {
             range: MoveShape::Square(3),
@@ -95,9 +115,27 @@ pub fn spawn_player(
     ));
 }
 
+pub fn spawn_enemy(
+    spawn_pos: GridPosition,
+    commands: &mut Commands,
+    enemy_assets: &Res<EnemyAssets>,
+) {
+    commands.spawn((
+        Mesh2d(enemy_assets.mesh.clone()),
+        MeshMaterial2d(enemy_assets.material.clone()),
+        Transform::default(),
+        Unit,
+        EnemyUnit,
+        Movement {
+            range: MoveShape::Square(3),
+        },
+        spawn_pos,
+    ));
+}
+
 pub fn update_positions(
-    transforms: Query<(&mut Transform, &GridPosition), (With<PlayerUnit>, Changed<GridPosition>)>,
-    tiles: Query<(&grid::Tile, &Transform), Without<PlayerUnit>>,
+    transforms: Query<(&mut Transform, &GridPosition), (With<Unit>, Changed<GridPosition>)>,
+    tiles: Query<(&grid::Tile, &Transform), Without<Unit>>,
 ) {
     for (mut transform, grid_pos) in transforms {
         let (_tile, tile_transform) = tiles
@@ -131,16 +169,40 @@ pub fn move_unit(
 
 pub fn handle_player_turn(
     mut ev_move_clicked: MessageReader<MoveButtonClicked>,
-    mut commands: Commands,
-    units: Query<Entity, (With<PlayerUnit>, With<HasMoved>)>,
+    mut next_state: ResMut<NextState<GameState>>,
     actionable_units: Query<&PlayerUnit, Without<HasMoved>>,
 ) {
     for _ in ev_move_clicked.read() {
         if actionable_units.count() == 0 {
-            // TODO: Enemy turn
-            for entity in units {
-                commands.entity(entity).remove::<HasMoved>();
-            }
+            next_state.set(GameState::EnemyTurn)
         }
     }
+}
+
+pub fn on_enemy_turn(
+    enemies: Query<&mut GridPosition, (With<EnemyUnit>, Without<HasMoved>)>,
+    players_positions: Query<&GridPosition, (With<PlayerUnit>, Without<EnemyUnit>)>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    bevy::platform::thread::sleep(Duration::from_millis(500));
+
+    for mut pos in enemies {
+        let target = players_positions
+            .iter()
+            .min_by_key(|pp| (pp.x - pos.x).abs() + (pp.y - pos.y).abs())
+            .unwrap();
+
+        // TODO: use movement range instead
+
+        let dx = (target.x - pos.x).signum();
+        let dy = (target.y - pos.y).signum();
+
+        if (target.x - pos.x).abs() >= (target.y - pos.y).abs() {
+            pos.x += dx;
+        } else {
+            pos.y += dy;
+        }
+    }
+
+    next_state.set(GameState::PlayerTurn);
 }
