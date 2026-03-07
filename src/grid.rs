@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use crate::tile_overlays::{
     OverlayLayer, TileOverlay, TileOverlayMaterials, update_overlay_material,
 };
-use crate::units::{HasMoved, PlayerUnit};
+use crate::units::{Attack, EnemyUnit, HasMoved, PlayerUnit};
 
 pub const TILE_SIZE: f32 = 64.0;
 pub const MAP_WIDTH: u32 = 12;
@@ -90,6 +90,7 @@ pub fn spawn(
         none: materials.add(Color::NONE),
         r#move: materials.add(Color::srgba(0.0, 1.0, 0.0, 0.5)),
         attack: materials.add(Color::srgba(1.0, 0.0, 0.0, 0.5)),
+        enemy_attack: materials.add(Color::srgba(1.0, 0.0, 0.0, 0.3)),
         move_attack: materials.add(Color::srgba(0.5, 0.5, 0.0, 0.5)),
         selected: materials.add(Color::srgba(0.0, 0.0, 1.0, 0.5)),
         hover: materials.add(Color::srgba(1.0, 1.0, 0.0, 0.5)),
@@ -137,10 +138,31 @@ pub fn spawn(
                     OverlayLayer::Hover,
                     true,
                 ))
+                .observe(
+                    |event: On<Pointer<Over>>,
+                     enemies: Query<(&GridPosition, &Attack), With<EnemyUnit>>,
+                     tiles: Query<&mut Tile>| {
+                        let entity = event.event_target();
+                        if let Some((enemy_pos, attack)) = enemies.iter().find(|(pos, _)| {
+                            **pos == GridPosition::from(tiles.get(entity).unwrap())
+                        }) {
+                            for mut tile in tiles {
+                                if attack.range.contains(*enemy_pos, GridPosition::from(*tile)) {
+                                    tile.overlay.enemy_attack = true;
+                                }
+                            }
+                        }
+                    },
+                )
                 .observe(update_overlay_material::<Pointer<Out>>(
                     OverlayLayer::Hover,
                     false,
                 ))
+                .observe(|_: On<Pointer<Out>>, tiles: Query<&mut Tile>| {
+                    for mut tile in tiles {
+                        tile.overlay.enemy_attack = false;
+                    }
+                })
                 .observe(
                     |event: On<Pointer<Click>>,
                      tiles: Query<(Entity, &Tile)>,

@@ -17,6 +17,7 @@ pub enum OverlayLayer {
 pub struct TileOverlay {
     r#move: bool,
     pub attack: bool,
+    pub enemy_attack: bool,
     pub selected: bool,
     pub hover: bool,
 }
@@ -42,6 +43,8 @@ impl TileOverlay {
             materials.r#move.clone()
         } else if self.attack {
             materials.attack.clone()
+        } else if self.enemy_attack {
+            materials.enemy_attack.clone()
         } else {
             materials.none.clone()
         }
@@ -52,6 +55,7 @@ impl TileOverlay {
 pub struct TileOverlayMaterials {
     pub none: Handle<ColorMaterial>,
     pub r#move: Handle<ColorMaterial>,
+    pub enemy_attack: Handle<ColorMaterial>,
     pub attack: Handle<ColorMaterial>,
     pub move_attack: Handle<ColorMaterial>,
     pub selected: Handle<ColorMaterial>,
