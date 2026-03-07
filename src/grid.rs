@@ -1,12 +1,15 @@
 use bevy::prelude::*;
 
-use crate::units::{self, PlayerSelected, PlayerUnit};
+use crate::units::{self, PlayerUnit};
 
 pub const TILE_SIZE: f32 = 64.0;
 pub const MAP_WIDTH: u32 = 12;
 pub const MAP_HEIGHT: u32 = 9;
 
 const THICKNESS: f32 = 2.0;
+
+#[derive(Message, Debug, Clone, Copy)]
+pub struct GridClicked(pub Option<Entity>);
 
 #[derive(Component)]
 pub struct Tile {
@@ -138,24 +141,27 @@ pub fn spawn(
                     ));
                 })
                 .observe(update_overlay_material::<Pointer<Over>>(
-                    OverlayLayer::Hover, true,
+                    OverlayLayer::Hover,
+                    true,
                 ))
                 .observe(update_overlay_material::<Pointer<Out>>(
-                    OverlayLayer::Hover, false
+                    OverlayLayer::Hover,
+                    false,
                 ))
                 .observe(
                     |event: On<Pointer<Click>>,
                      tiles: Query<&Tile>,
                      players: Query<(Entity, &GridPosition), With<PlayerUnit>>,
-                     mut ev_player_selected: MessageWriter<units::PlayerSelected>| {
+                     mut ev_grid_clicked: MessageWriter<GridClicked>| {
                         let clicked_coords: GridPosition = tiles.get(event.entity).unwrap().into();
 
                         if let Some((player, _)) = players
                             .iter()
                             .find(|(_, position)| **position == clicked_coords)
                         {
-                            ev_player_selected.write(units::PlayerSelected(player));
-                            println!("clicked player");
+                            ev_grid_clicked.write(GridClicked(Some(player)));
+                        } else {
+                            ev_grid_clicked.write(GridClicked(None));
                         };
                     },
                 );
@@ -179,21 +185,27 @@ fn update_overlay_material<E: EntityEvent>(
     }
 }
 
-pub fn show_player_move_range(
-    mut ev_player_selected: MessageReader<PlayerSelected>,
+pub fn grid_clicked(
+    mut ev_grid_clicked: MessageReader<GridClicked>,
     query: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
     tiles: Query<(&Children, &Tile)>,
     mut overlays: Query<&mut TileOverlay>,
 ) {
-    for ev in ev_player_selected.read() {
-        let (origin, movement) = query.get(ev.0).unwrap();
-        let range = movement.range;
+    for ev in ev_grid_clicked.read() {
+        if let Some(entity) = ev.0 {
+            let (origin, movement) = query.get(entity).unwrap();
+            let range = movement.range;
 
-        for (children, tile) in tiles {
-            if range.contains(*origin, tile.into()) {
-                let child = children.first().unwrap();
-                let mut overlay = overlays.get_mut(*child).unwrap();
-                overlay.set_layer(OverlayLayer::Range, true);
+            for (children, tile) in tiles {
+                if range.contains(*origin, tile.into()) {
+                    let child = children.first().unwrap();
+                    let mut overlay = overlays.get_mut(*child).unwrap();
+                    overlay.set_layer(OverlayLayer::Range, true);
+                }
+            }
+        } else {
+            for mut overlay in overlays.iter_mut() {
+                overlay.range = false;
             }
         }
     }

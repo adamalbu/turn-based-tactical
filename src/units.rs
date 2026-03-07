@@ -2,9 +2,6 @@ use bevy::prelude::*;
 
 use crate::grid::{self, GridPosition};
 
-#[derive(Message, Debug, Clone, Copy)]
-pub struct PlayerSelected(pub Entity);
-
 #[derive(Component, Debug, Clone, Copy)]
 pub struct PlayerUnit;
 

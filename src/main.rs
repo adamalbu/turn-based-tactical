@@ -21,7 +21,7 @@ fn main() {
             }),
             MeshPickingPlugin,
         ))
-        .add_message::<units::PlayerSelected>()
+        .add_message::<grid::GridClicked>()
         .add_systems(
             Startup,
             (
@@ -30,9 +30,6 @@ fn main() {
                 units::spawn_player.after(grid::spawn),
             ),
         )
-        .add_systems(
-            Update,
-            (grid::update_overlay_materials, grid::show_player_move_range),
-        )
+        .add_systems(Update, (grid::update_overlay_materials, grid::grid_clicked))
         .run();
 }
