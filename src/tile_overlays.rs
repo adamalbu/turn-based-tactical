@@ -12,7 +12,7 @@ pub enum OverlayLayer {
     Hover,
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct TileOverlay {
     range: bool,
     pub selected: bool,

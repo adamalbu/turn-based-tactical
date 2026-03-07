@@ -23,11 +23,12 @@ pub fn grid_clicked(
     mut next_state: ResMut<NextState<PlayerTurnState>>,
     mut selected_unit: ResMut<units::SelectedUnit>,
     mut selected_position: ResMut<SelectedPosition>,
-    mut tiles: Query<&mut Tile>,
+    mut tiles: Query<(&mut Tile, Has<ValidMovement>)>,
     query: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
 ) {
     for ev in ev_grid_clicked.read() {
-        if let Some(entity) = ev.entity {
+        // Select unit
+        if let Some(entity) = ev.unit {
             commands.trigger(Deselect);
 
             selected_unit.0 = Some(entity);
@@ -35,16 +36,18 @@ pub fn grid_clicked(
             return;
         }
 
+        // Select position
         if let Some(player_entity) = **selected_unit {
             let (origin, movement) = query.get(player_entity).unwrap();
             let range = movement.range;
 
-            for mut tile in tiles.iter_mut() {
+            // Clear selection
+            for (mut tile, _) in tiles.iter_mut() {
                 tile.overlay.selected = false;
             }
 
-            if range.contains(*origin, ev.position) {
-                selected_position.0 = Some(ev.position);
+            if tiles.get(ev.tile).unwrap().1 {
+                selected_position.0 = Some(ev.click_pos);
                 next_state.set(PlayerTurnState::SelectedPosition);
                 return;
             }
@@ -73,11 +76,12 @@ pub fn deselect(mut commands: Commands, mut selected_unit: ResMut<units::Selecte
 pub fn selected_player(
     mut commands: Commands,
     selected_unit: ResMut<units::SelectedUnit>,
-    query: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
+    player: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
+    player_positions: Query<&GridPosition, With<PlayerUnit>>,
     tiles: Query<(Entity, &mut Tile)>,
 ) {
     let entity = selected_unit.unwrap();
-    let (origin, movement) = query.get(entity).unwrap();
+    let (origin, movement) = player.get(entity).unwrap();
     let range = movement.range;
 
     for (tile_entity, mut tile) in tiles {
@@ -88,14 +92,19 @@ pub fn selected_player(
             tile.overlay.selected = true;
         }
 
-        // TODO: Don't show if tile contains a unit
         if range.contains(*origin, (*tile).into()) {
-            commands.entity(tile_entity).insert(ValidMovement);
+            let over_player = player_positions
+                .iter()
+                .any(|t| t == &GridPosition::from(*tile));
+
+            if !over_player {
+                commands.entity(tile_entity).insert(ValidMovement);
+            }
         }
     }
 }
 
-pub fn selected_position(selected_position: Res<SelectedPosition>, mut tiles: Query<&mut Tile>) {
+pub fn selected_position(selected_position: Res<SelectedPosition>, mut tiles: Query<(&mut Tile)>) {
     set_overlay_at(
         selected_position.unwrap(),
         OverlayLayer::Selected,

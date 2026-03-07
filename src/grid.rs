@@ -13,11 +13,12 @@ const THICKNESS: f32 = 2.0;
 
 #[derive(Message, Debug, Clone, Copy)]
 pub struct GridClicked {
-    pub position: GridPosition,
-    pub entity: Option<Entity>,
+    pub tile: Entity,
+    pub click_pos: GridPosition,
+    pub unit: Option<Entity>,
 }
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy)]
 pub struct Tile {
     pub x: i32,
     pub y: i32,
@@ -127,26 +128,28 @@ pub fn spawn(
                 ))
                 .observe(
                     |event: On<Pointer<Click>>,
-                     tiles: Query<&Tile>,
+                     tiles: Query<(Entity, &Tile)>,
                      players: Query<
                         (Entity, &GridPosition),
                         (With<PlayerUnit>, Without<HasMoved>),
                     >,
                      mut ev_grid_clicked: MessageWriter<GridClicked>| {
-                        let clicked_coords: GridPosition = tiles.get(event.entity).unwrap().into();
+                        let (entity, tile) = tiles.get(event.entity).unwrap();
+                        let click_pos = tile.into();
 
-                        if let Some((player, _)) = players
-                            .iter()
-                            .find(|(_, position)| **position == clicked_coords)
+                        if let Some((player, _)) =
+                            players.iter().find(|(_, position)| **position == click_pos)
                         {
                             ev_grid_clicked.write(GridClicked {
-                                position: clicked_coords,
-                                entity: Some(player),
+                                tile: entity,
+                                click_pos,
+                                unit: Some(player),
                             });
                         } else {
                             ev_grid_clicked.write(GridClicked {
-                                position: clicked_coords,
-                                entity: None,
+                                tile: entity,
+                                click_pos,
+                                unit: None,
                             });
                         };
                     },
