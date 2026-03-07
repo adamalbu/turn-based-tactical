@@ -56,6 +56,7 @@ fn main() {
         .init_resource::<interaction::SelectedPosition>()
         .init_resource::<units::PlayerAssets>()
         .init_resource::<units::EnemyAssets>()
+        .init_resource::<units::HealthBarAssets>()
         .init_state::<GameState>()
         .init_state::<PlayerTurnState>()
         .add_message::<grid::GridClicked>()
@@ -93,6 +94,7 @@ fn main() {
                 (ui::handle_move_button, units::move_unit)
                     .run_if(in_state(PlayerTurnState::SelectedPosition)),
                 units::update_positions,
+                units::update_health_bar,
             ),
         )
         .add_systems(PostUpdate, units::check_win)
