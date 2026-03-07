@@ -7,14 +7,16 @@ use crate::{
 
 #[derive(Clone, Copy)]
 pub enum OverlayLayer {
-    Range,
+    Move,
+    Attack,
     Selected,
     Hover,
 }
 
 #[derive(Default, Debug, Clone, Copy)]
 pub struct TileOverlay {
-    range: bool,
+    r#move: bool,
+    pub attack: bool,
     pub selected: bool,
     pub hover: bool,
 }
@@ -22,7 +24,8 @@ pub struct TileOverlay {
 impl TileOverlay {
     pub fn set_layer(&mut self, layer: OverlayLayer, enabled: bool) {
         match layer {
-            OverlayLayer::Range => self.range = enabled,
+            OverlayLayer::Move => self.r#move = enabled,
+            OverlayLayer::Attack => self.attack = enabled,
             OverlayLayer::Selected => self.selected = enabled,
             OverlayLayer::Hover => self.hover = enabled,
         }
@@ -33,8 +36,12 @@ impl TileOverlay {
             materials.hover.clone()
         } else if self.selected {
             materials.selected.clone()
-        } else if self.range {
-            materials.range.clone()
+        } else if self.r#move && self.attack {
+            materials.move_attack.clone()
+        } else if self.r#move {
+            materials.r#move.clone()
+        } else if self.attack {
+            materials.attack.clone()
         } else {
             materials.none.clone()
         }
@@ -44,7 +51,9 @@ impl TileOverlay {
 #[derive(Resource, Clone)]
 pub struct TileOverlayMaterials {
     pub none: Handle<ColorMaterial>,
-    pub range: Handle<ColorMaterial>,
+    pub r#move: Handle<ColorMaterial>,
+    pub attack: Handle<ColorMaterial>,
+    pub move_attack: Handle<ColorMaterial>,
     pub selected: Handle<ColorMaterial>,
     pub hover: Handle<ColorMaterial>,
 }
@@ -74,7 +83,7 @@ pub fn set_overlay_at(
 
 pub fn update_range_overlay(tiles: Query<(&mut Tile, Has<ValidMovement>)>) {
     for (mut tile, valid_movement) in tiles {
-        tile.overlay.range = valid_movement;
+        tile.overlay.r#move = valid_movement;
     }
 }
 

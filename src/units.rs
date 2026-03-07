@@ -45,15 +45,16 @@ pub struct Health {
 #[derive(Component)]
 pub struct Attack {
     pub damage: u32,
-    pub range: u32,
+    pub range: RangeShape,
 }
 
 #[derive(Clone, Copy)]
-pub enum MoveShape {
+pub enum RangeShape {
     Square(u32),
+    Axis,
 }
 
-impl MoveShape {
+impl RangeShape {
     pub fn contains(self, origin: GridPosition, tile: GridPosition) -> bool {
         let dx = (tile.x - origin.x).abs();
         let dy = (tile.y - origin.y).abs();
@@ -64,13 +65,14 @@ impl MoveShape {
 
         match self {
             Self::Square(range) => dx < range as i32 && dy < range as i32,
+            Self::Axis => dx == 0 || dy == 0,
         }
     }
 }
 
 #[derive(Component)]
 pub struct Movement {
-    pub range: MoveShape,
+    pub range: RangeShape,
 }
 
 pub fn setup(
@@ -109,7 +111,11 @@ pub fn spawn_player(
         Unit,
         PlayerUnit,
         Movement {
-            range: MoveShape::Square(3),
+            range: RangeShape::Square(3),
+        },
+        Attack {
+            damage: 4,
+            range: RangeShape::Axis,
         },
         spawn_pos,
     ));
@@ -127,7 +133,7 @@ pub fn spawn_enemy(
         Unit,
         EnemyUnit,
         Movement {
-            range: MoveShape::Square(3),
+            range: RangeShape::Square(3),
         },
         spawn_pos,
     ));

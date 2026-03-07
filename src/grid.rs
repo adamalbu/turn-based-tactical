@@ -88,7 +88,9 @@ pub fn spawn(
 ) {
     let overlay_materials = TileOverlayMaterials {
         none: materials.add(Color::NONE),
-        range: materials.add(Color::srgba(0.0, 1.0, 0.0, 0.5)),
+        r#move: materials.add(Color::srgba(0.0, 1.0, 0.0, 0.5)),
+        attack: materials.add(Color::srgba(1.0, 0.0, 0.0, 0.5)),
+        move_attack: materials.add(Color::srgba(0.5, 0.5, 0.0, 0.5)),
         selected: materials.add(Color::srgba(0.0, 0.0, 1.0, 0.5)),
         hover: materials.add(Color::srgba(1.0, 1.0, 0.0, 0.5)),
     };

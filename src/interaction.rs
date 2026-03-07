@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::grid::{GridClicked, GridPosition, Tile};
 use crate::tile_overlays::{OverlayLayer, set_overlay_at};
 
-use crate::units::Unit;
+use crate::units::{Attack, Unit};
 use crate::{
     PlayerTurnState,
     units::{self, PlayerUnit},
@@ -65,6 +65,7 @@ pub fn on_deselect(
 ) {
     for (entity, mut tile) in overlays.iter_mut() {
         tile.overlay.selected = false;
+        tile.overlay.attack = false;
         commands.entity(entity).remove::<ValidMovement>();
     }
 }
@@ -78,12 +79,14 @@ pub fn selected_player(
     mut commands: Commands,
     selected_unit: ResMut<units::SelectedUnit>,
     player: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
+    player_attack: Query<&Attack, With<PlayerUnit>>,
     unit_positions: Query<&GridPosition, With<Unit>>,
     tiles: Query<(Entity, &mut Tile)>,
 ) {
     let entity = selected_unit.unwrap();
     let (origin, movement) = player.get(entity).unwrap();
-    let range = movement.range;
+    let attack_range = player_attack.get(entity).unwrap().range;
+    let move_range = movement.range;
 
     for (tile_entity, mut tile) in tiles {
         let dx = (tile.x - origin.x).abs();
@@ -93,7 +96,11 @@ pub fn selected_player(
             tile.overlay.selected = true;
         }
 
-        if range.contains(*origin, (*tile).into()) {
+        if attack_range.contains(*origin, GridPosition::from(*tile)) {
+            tile.overlay.attack = true;
+        }
+
+        if move_range.contains(*origin, GridPosition::from(*tile)) {
             let over_unit = unit_positions
                 .iter()
                 .any(|t| t == &GridPosition::from(*tile));
