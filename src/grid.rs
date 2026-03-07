@@ -17,10 +17,21 @@ pub struct GridClicked {
     pub entity: Option<Entity>,
 }
 
-#[derive(Component)]
+#[derive(Component, Clone, Copy)]
 pub struct Tile {
     pub x: i32,
     pub y: i32,
+    pub overlay: TileOverlay,
+}
+
+impl Tile {
+    pub fn new(x: i32, y: i32) -> Self {
+        Self {
+            x,
+            y,
+            overlay: TileOverlay::default(),
+        }
+    }
 }
 
 impl From<Tile> for Vec2 {
@@ -36,12 +47,6 @@ impl From<Tile> for Vec2 {
 pub struct GridPosition {
     pub x: i32,
     pub y: i32,
-}
-
-impl GridPosition {
-    pub fn as_vec3(&self, z: f32) -> Vec3 {
-        Vec3::new(self.x as f32, self.y as f32, z)
-    }
 }
 
 impl From<Tile> for GridPosition {
@@ -97,16 +102,12 @@ pub fn spawn(
                 .spawn((
                     Mesh2d(hover_mesh.clone()),
                     Transform::from_xyz(pos.x, pos.y, 1.0),
-                    Tile {
-                        x: x as i32,
-                        y: y as i32,
-                    },
+                    Tile::new(x as i32, y as i32),
                 ))
                 .with_children(|parent| {
                     parent.spawn((
                         Mesh2d(overlay_mesh.clone()),
                         MeshMaterial2d(overlay_materials.none.clone()),
-                        TileOverlay::default(),
                         Transform::from_xyz(0.0, 0.0, -0.1),
                     ));
 

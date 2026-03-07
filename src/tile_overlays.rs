@@ -12,7 +12,7 @@ pub enum OverlayLayer {
     Hover,
 }
 
-#[derive(Component, Default, Clone, Copy)]
+#[derive(Default, Clone, Copy)]
 pub struct TileOverlay {
     range: bool,
     pub selected: bool,
@@ -52,13 +52,10 @@ pub struct TileOverlayMaterials {
 pub fn update_overlay_material<E: EntityEvent>(
     layer: OverlayLayer,
     enabled: bool,
-) -> impl Fn(On<E>, Query<&Children, With<Tile>>, Query<&mut TileOverlay>) {
-    move |event, query, mut overlays| {
-        let children = query.get(event.event_target()).unwrap();
-        let child = children.first().unwrap();
-
-        let mut overlay = overlays.get_mut(*child).unwrap();
-        overlay.set_layer(layer, enabled);
+) -> impl Fn(On<E>, Query<&mut Tile>) {
+    move |event, mut tiles| {
+        let mut tile = tiles.get_mut(event.event_target()).unwrap();
+        tile.overlay.set_layer(layer, enabled);
     }
 }
 
@@ -66,40 +63,29 @@ pub fn set_overlay_at(
     pos: GridPosition,
     layer: OverlayLayer,
     enabled: bool,
-    tiles: &Query<(&Tile, &Children)>,
-    overlays: &mut Query<&mut TileOverlay>,
+    tiles: &mut Query<&mut Tile>,
 ) {
-    for (tile, children) in tiles {
+    for mut tile in tiles {
         if tile.x == pos.x && tile.y == pos.y {
-            let child = children.first().unwrap();
-            if let Ok(mut overlay) = overlays.get_mut(*child) {
-                overlay.set_layer(layer, enabled);
-            }
-            return;
+            tile.overlay.set_layer(layer, enabled);
         }
     }
 }
 
-pub fn update_overlay_materials(
-    mut overlays: Query<(&mut TileOverlay, &mut MeshMaterial2d<ColorMaterial>)>,
-    movement_tiles: Query<(&Tile, &Children), With<ValidMovement>>,
-    non_movement_tiles: Query<(&Tile, &Children), Without<ValidMovement>>,
-    materials: Res<TileOverlayMaterials>,
-) {
-    for (_, children) in movement_tiles {
-        let child = children.first().unwrap();
-        if let Ok((mut overlay, _)) = overlays.get_mut(*child) {
-            overlay.range = true;
-        }
+pub fn update_range_overlay(tiles: Query<(&mut Tile, Has<ValidMovement>)>) {
+    for (mut tile, valid_movement) in tiles {
+        tile.overlay.range = valid_movement;
     }
+}
 
-    for (_, children) in non_movement_tiles {
-        let child = children.first().unwrap();
-        if let Ok((mut overlay, _)) = overlays.get_mut(*child) {
-            overlay.range = false;
-        }
-    }
-    for (overlay, mut material) in overlays {
-        material.0 = overlay.get_material(&materials);
+pub fn update_overlay_materials(
+    tiles: Query<(&Tile, &Children), Changed<Tile>>,
+    mut overlays: Query<&mut MeshMaterial2d<ColorMaterial>>,
+    overlay_materials: Res<TileOverlayMaterials>,
+) {
+    for (tile, children) in tiles {
+        let overlay_child = children.first().unwrap();
+        let mut material = overlays.get_mut(*overlay_child).unwrap();
+        material.0 = tile.overlay.get_material(&overlay_materials);
     }
 }

@@ -61,6 +61,7 @@ fn main() {
         .add_systems(
             Update,
             (
+                tile_overlays::update_range_overlay.before(tile_overlays::update_overlay_materials),
                 tile_overlays::update_overlay_materials,
                 interaction::grid_clicked,
                 ui::handle_move_button.run_if(in_state(PlayerTurnState::SelectedPosition)),
