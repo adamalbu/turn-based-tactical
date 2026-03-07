@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::units::{self, MoveShape, PlayerSelected, PlayerUnit};
+use crate::units::{self, PlayerSelected, PlayerUnit};
 
 pub const TILE_SIZE: f32 = 64.0;
 pub const MAP_WIDTH: u32 = 12;
@@ -46,14 +46,42 @@ impl From<&Tile> for GridPosition {
         }
     }
 }
-#[derive(Component)]
-pub struct TileHighlight;
 
-#[derive(Resource)]
+#[derive(Clone, Copy)]
+pub enum OverlayLayer {
+    Range,
+    Hover,
+}
+
+#[derive(Component, Default, Clone, Copy)]
+pub struct TileOverlay {
+    pub range: bool,
+    pub hover: bool,
+}
+
+impl TileOverlay {
+    fn set_layer(&mut self, layer: OverlayLayer, enabled: bool) {
+        match layer {
+            OverlayLayer::Range => self.range = enabled,
+            OverlayLayer::Hover => self.hover = enabled,
+        }
+    }
+    fn get_material(&self, materials: &Res<TileOverlayMaterials>) -> Handle<ColorMaterial> {
+        if self.hover {
+            materials.hover.clone()
+        } else if self.range {
+            materials.range.clone()
+        } else {
+            materials.none.clone()
+        }
+    }
+}
+
+#[derive(Resource, Clone)]
 pub struct TileOverlayMaterials {
     none: Handle<ColorMaterial>,
-    hover: Handle<ColorMaterial>,
     range: Handle<ColorMaterial>,
+    hover: Handle<ColorMaterial>,
 }
 
 pub fn spawn(
@@ -63,8 +91,8 @@ pub fn spawn(
 ) {
     let overlay_materials = TileOverlayMaterials {
         none: materials.add(Color::NONE),
-        hover: materials.add(Color::srgba(1.0, 1.0, 0.0, 0.5)),
         range: materials.add(Color::srgba(0.0, 1.0, 0.0, 0.5)),
+        hover: materials.add(Color::srgba(1.0, 1.0, 0.0, 0.5)),
     };
 
     let hover_mesh = meshes.add(Rectangle::new(TILE_SIZE, TILE_SIZE));
@@ -99,7 +127,7 @@ pub fn spawn(
                     parent.spawn((
                         Mesh2d(overlay_mesh.clone()),
                         MeshMaterial2d(overlay_materials.none.clone()),
-                        TileHighlight,
+                        TileOverlay::default(),
                         Transform::from_xyz(0.0, 0.0, -0.1),
                     ));
 
@@ -110,10 +138,10 @@ pub fn spawn(
                     ));
                 })
                 .observe(update_overlay_material::<Pointer<Over>>(
-                    overlay_materials.hover.clone(),
+                    OverlayLayer::Hover, true,
                 ))
                 .observe(update_overlay_material::<Pointer<Out>>(
-                    overlay_materials.none.clone(),
+                    OverlayLayer::Hover, false
                 ))
                 .observe(
                     |event: On<Pointer<Click>>,
@@ -139,18 +167,15 @@ pub fn spawn(
 
 #[allow(clippy::type_complexity)]
 fn update_overlay_material<E: EntityEvent>(
-    new_material: Handle<ColorMaterial>,
-) -> impl Fn(
-    On<E>,
-    Query<&Children, With<Tile>>,
-    Query<&mut MeshMaterial2d<ColorMaterial>, With<TileHighlight>>,
-) {
-    move |event, query, mut highlights| {
+    layer: OverlayLayer,
+    enabled: bool,
+) -> impl Fn(On<E>, Query<&Children, With<Tile>>, Query<&mut TileOverlay>) {
+    move |event, query, mut overlays| {
         let children = query.get(event.event_target()).unwrap();
         let child = children.first().unwrap();
 
-        let mut material = highlights.get_mut(*child).unwrap();
-        *material = MeshMaterial2d(new_material.clone());
+        let mut overlay = overlays.get_mut(*child).unwrap();
+        overlay.set_layer(layer, enabled);
     }
 }
 
@@ -158,36 +183,27 @@ pub fn show_player_move_range(
     mut ev_player_selected: MessageReader<PlayerSelected>,
     query: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
     tiles: Query<(&Children, &Tile)>,
-    mut highlights: Query<&mut MeshMaterial2d<ColorMaterial>, With<TileHighlight>>,
-    overlay_material: Res<TileOverlayMaterials>,
+    mut overlays: Query<&mut TileOverlay>,
 ) {
     for ev in ev_player_selected.read() {
-        dbg!(&ev);
         let (origin, movement) = query.get(ev.0).unwrap();
-        show_move_range(
-            *origin,
-            movement.range,
-            tiles,
-            &mut highlights,
-            &overlay_material,
-        );
+        let range = movement.range;
+
+        for (children, tile) in tiles {
+            if range.contains(*origin, tile.into()) {
+                let child = children.first().unwrap();
+                let mut overlay = overlays.get_mut(*child).unwrap();
+                overlay.set_layer(OverlayLayer::Range, true);
+            }
+        }
     }
 }
 
-pub fn show_move_range(
-    origin: GridPosition,
-    range: MoveShape,
-    tiles: Query<(&Children, &Tile)>,
-    highlights: &mut Query<&mut MeshMaterial2d<ColorMaterial>, With<TileHighlight>>,
-    overlay_material: &Res<TileOverlayMaterials>,
+pub fn update_overlay_materials(
+    overlays: Query<(&TileOverlay, &mut MeshMaterial2d<ColorMaterial>), Changed<TileOverlay>>,
+    materials: Res<TileOverlayMaterials>,
 ) {
-    let range_material = overlay_material.range.clone();
-
-    for (children, tile) in tiles {
-        if range.contains(origin, tile.into()) {
-            let child = children.first().unwrap();
-            let mut material = highlights.get_mut(*child).unwrap();
-            *material = MeshMaterial2d(range_material.clone())
-        }
+    for (overlay, mut material) in overlays {
+        material.0 = overlay.get_material(&materials);
     }
 }
