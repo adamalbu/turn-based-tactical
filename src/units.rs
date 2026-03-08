@@ -1,10 +1,10 @@
-use std::time::Duration;
+use std::{i32, time::Duration};
 
 use bevy::prelude::*;
 
 use crate::{
     GameState, PlayerTurnState,
-    grid::{self, GridPosition},
+    grid::{self, GridPosition, Tile},
     interaction::SelectedPosition,
     ui::MoveButtonClicked,
 };
@@ -269,15 +269,21 @@ pub fn check_win(enemies: Query<&EnemyUnit>, mut next_state: ResMut<NextState<Ga
 pub fn on_enemy_turn(
     mut commands: Commands,
     enemies: Query<
-        (Entity, &mut GridPosition, Option<&mut Health>),
+        (
+            Entity,
+            &mut GridPosition,
+            Option<&Movement>,
+            Option<&mut Health>,
+        ),
         (With<EnemyUnit>, Without<HasMoved>),
     >,
     players: Query<(&GridPosition, &Attack), (With<PlayerUnit>, Without<EnemyUnit>)>,
+    tiles: Query<(Entity, &Tile)>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     bevy::platform::thread::sleep(Duration::from_millis(500));
 
-    for (entity, mut pos, mut health) in enemies {
+    for (entity, mut pos, movement, mut health) in enemies {
         for (player_pos, attack) in players {
             if attack.range.contains(*player_pos, *pos)
                 && let Some(ref mut health) = health
@@ -295,15 +301,14 @@ pub fn on_enemy_turn(
             .min_by_key(|(pp, _)| (pp.x - pos.x).abs() + (pp.y - pos.y).abs())
             .unwrap();
 
-        // TODO: use movement range instead
+        if let Some(movement) = movement {
+            let move_to = tiles
+                .iter()
+                .filter(|(_, tile)| movement.range.contains(*pos, GridPosition::from(*tile)))
+                .min_by_key(|(_, tile)| (tile.x - target.x).abs() + (tile.y - target.y).abs())
+                .unwrap();
 
-        let dx = (target.x - pos.x).signum();
-        let dy = (target.y - pos.y).signum();
-
-        if (target.x - pos.x).abs() >= (target.y - pos.y).abs() {
-            pos.x += dx;
-        } else {
-            pos.y += dy;
+            *pos = GridPosition::from(*(move_to.1));
         }
     }
 
