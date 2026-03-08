@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
-use crate::grid::{GridClicked, GridPosition, Tile};
-use crate::tile_overlays::{OverlayLayer, set_overlay_at};
+use crate::grid::{self, GridClicked, GridPosition, Tile, los};
+use crate::tile_overlays::{self, OverlayLayer, TileOverlay, set_overlay_at};
 
 use crate::units::{self, player::PlayerUnit};
 use crate::units::{Attack, Unit, player};
@@ -21,7 +21,7 @@ pub fn grid_clicked(
     mut next_state: ResMut<NextState<player::TurnState>>,
     mut selected_unit: ResMut<units::SelectedUnit>,
     mut selected_position: ResMut<SelectedPosition>,
-    mut tiles: Query<(&mut Tile, Has<ValidMovement>)>,
+    mut tiles: Query<(&mut Tile, &mut TileOverlay, Has<ValidMovement>)>,
 ) {
     for ev in ev_grid_clicked.read() {
         // Select unit
@@ -36,11 +36,11 @@ pub fn grid_clicked(
         // Select position
         if (**selected_unit).is_some() {
             // Clear selection
-            for (mut tile, _) in tiles.iter_mut() {
-                tile.overlay.selected = false;
+            for (_, mut overlay, _) in tiles.iter_mut() {
+                overlay.selected = false;
             }
 
-            if tiles.get(ev.tile).unwrap().1 {
+            if tiles.get(ev.tile).unwrap().2 {
                 selected_position.0 = Some(ev.click_pos);
                 next_state.set(player::TurnState::SelectedPosition);
                 return;
@@ -54,11 +54,13 @@ pub fn grid_clicked(
 pub fn on_deselect(
     _: On<Deselect>,
     mut commands: Commands,
-    mut overlays: Query<(Entity, &mut Tile)>,
+    tiles: Query<Entity, With<Tile>>,
+    mut overlays: Query<&mut TileOverlay>,
 ) {
-    for (entity, mut tile) in overlays.iter_mut() {
-        tile.overlay.selected = false;
-        tile.overlay.attack = false;
+    for entity in tiles.iter() {
+        let mut overlay = overlays.get_mut(entity).unwrap();
+        overlay.selected = false;
+        overlay.attack = false;
         commands.entity(entity).remove::<ValidMovement>();
     }
 }
@@ -74,7 +76,10 @@ pub fn selected_player(
     player: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
     player_attack: Query<&Attack, With<PlayerUnit>>,
     unit_positions: Query<&GridPosition, With<Unit>>,
-    tiles: Query<(Entity, &mut Tile)>,
+    tiles: Query<(Entity, &Tile)>,
+    only_tiles: Query<&Tile>,
+    mut overlays: Query<&mut TileOverlay>,
+    tilemap: Res<grid::Tilemap>,
 ) {
     let entity = selected_unit.unwrap();
     let (origin, movement) = player.get(entity).unwrap();
@@ -85,15 +90,19 @@ pub fn selected_player(
         let dx = (tile.x - origin.x).abs();
         let dy = (tile.y - origin.y).abs();
 
+        let mut overlay = overlays.get_mut(tile_entity).unwrap();
+
         if dx == 0 && dy == 0 {
-            tile.overlay.selected = true;
+            overlay.selected = true;
         }
 
         if attack_range.contains(*origin, GridPosition::from(*tile)) {
-            tile.overlay.attack = true;
+            overlay.attack = true;
         }
 
-        if move_range.contains(*origin, GridPosition::from(*tile)) {
+        if move_range.contains_with_los(*origin, GridPosition::from(*tile), |from, to| {
+            los(from, to, &tilemap, &only_tiles)
+        }) {
             let over_unit = unit_positions
                 .iter()
                 .any(|t| t == &GridPosition::from(*tile));
@@ -105,7 +114,10 @@ pub fn selected_player(
     }
 }
 
-pub fn selected_position(selected_position: Res<SelectedPosition>, mut tiles: Query<&mut Tile>) {
+pub fn selected_position(
+    selected_position: Res<SelectedPosition>,
+    mut tiles: Query<(&mut Tile, &mut TileOverlay)>,
+) {
     set_overlay_at(
         selected_position.unwrap(),
         OverlayLayer::Selected,

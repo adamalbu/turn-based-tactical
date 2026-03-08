@@ -13,7 +13,7 @@ pub enum OverlayLayer {
     Hover,
 }
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Component, Default, Debug, Clone, Copy)]
 pub struct TileOverlay {
     r#move: bool,
     pub attack: bool,
@@ -87,10 +87,10 @@ pub fn setup_assets(mut commands: Commands, mut materials: ResMut<Assets<ColorMa
 pub fn update_overlay_material<E: EntityEvent>(
     layer: OverlayLayer,
     enabled: bool,
-) -> impl Fn(On<E>, Query<&mut Tile>) {
-    move |event, mut tiles| {
-        let mut tile = tiles.get_mut(event.event_target()).unwrap();
-        tile.overlay.set_layer(layer, enabled);
+) -> impl Fn(On<E>, Query<&mut TileOverlay>) {
+    move |event, mut overlays| {
+        let mut overlay = overlays.get_mut(event.event_target()).unwrap();
+        overlay.set_layer(layer, enabled);
     }
 }
 
@@ -98,29 +98,29 @@ pub fn set_overlay_at(
     pos: GridPosition,
     layer: OverlayLayer,
     enabled: bool,
-    tiles: &mut Query<&mut Tile>,
+    overlay: &mut Query<(&mut Tile, &mut TileOverlay)>,
 ) {
-    for mut tile in tiles {
+    for (tile, mut overlay) in overlay {
         if tile.x == pos.x && tile.y == pos.y {
-            tile.overlay.set_layer(layer, enabled);
+            overlay.set_layer(layer, enabled);
         }
     }
 }
 
-pub fn update_range_overlay(tiles: Query<(&mut Tile, Has<ValidMovement>)>) {
-    for (mut tile, valid_movement) in tiles {
-        tile.overlay.r#move = valid_movement;
+pub fn update_range_overlay(tiles: Query<(&mut TileOverlay, Has<ValidMovement>)>) {
+    for (mut overlay, valid_movement) in tiles {
+        overlay.r#move = valid_movement;
     }
 }
 
 pub fn update_overlay_materials(
-    tiles: Query<(&Tile, &Children), Changed<Tile>>,
-    mut overlays: Query<&mut MeshMaterial2d<ColorMaterial>>,
-    overlay_materials: Res<Materials>,
+    overlays: Query<(&TileOverlay, &Children), Changed<TileOverlay>>,
+    mut overlay_mesh_materials: Query<&mut MeshMaterial2d<ColorMaterial>>,
+    overlay_materials_handles: Res<Materials>,
 ) {
-    for (tile, children) in tiles {
+    for (overlay, children) in overlays {
         let overlay_child = children.first().unwrap();
-        let mut material = overlays.get_mut(*overlay_child).unwrap();
-        material.0 = tile.overlay.get_material(&overlay_materials);
+        let mut material = overlay_mesh_materials.get_mut(*overlay_child).unwrap();
+        material.0 = overlay.get_material(&overlay_materials_handles);
     }
 }

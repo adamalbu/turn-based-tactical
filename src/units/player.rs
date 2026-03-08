@@ -93,7 +93,6 @@ pub fn on_player_turn(
                         commands.entity(player_entity).despawn();
                     } else {
                         player_health.hp -= enemy_attack.damage;
-                        println!("decrease player health")
                     }
                 }
             }

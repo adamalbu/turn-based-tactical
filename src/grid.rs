@@ -1,6 +1,6 @@
-use std::ops::Sub;
+use std::{collections::HashMap, ops::Sub};
 
-use bevy::prelude::*;
+use bevy::{ecs::system::QueryLens, prelude::*};
 
 use crate::{
     game, interaction,
@@ -16,6 +16,9 @@ pub const TILE_SIZE: f32 = 64.0;
 
 const THICKNESS: f32 = 2.0;
 
+#[derive(Resource, Default, Deref, DerefMut)]
+pub struct Tilemap(pub HashMap<GridPosition, Entity>);
+
 #[derive(Message, Debug, Clone, Copy)]
 pub struct GridClicked {
     pub tile: Entity,
@@ -23,7 +26,7 @@ pub struct GridClicked {
     pub unit: Option<Entity>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TileType {
     Floor,
     Wall,
@@ -42,17 +45,11 @@ pub struct Tile {
     pub x: i32,
     pub y: i32,
     pub r#type: TileType,
-    pub overlay: TileOverlay,
 }
 
 impl Tile {
     pub fn new(x: i32, y: i32, r#type: TileType) -> Self {
-        Self {
-            x,
-            y,
-            r#type,
-            overlay: TileOverlay::default(),
-        }
+        Self { x, y, r#type }
     }
 }
 
@@ -65,7 +62,7 @@ impl From<Tile> for Vec2 {
     }
 }
 
-#[derive(Component, Clone, Copy, PartialEq, Debug)]
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct GridPosition {
     pub x: i32,
     pub y: i32,
@@ -103,6 +100,7 @@ impl From<&Tile> for GridPosition {
 pub fn plugin(app: &mut App) {
     app.add_systems(PreStartup, setup_assets)
         .add_systems(Startup, spawn)
+        .add_systems(PostStartup, build_tilemap)
         .add_message::<GridClicked>()
         .add_systems(Update, interaction::grid_clicked);
 }
@@ -163,6 +161,7 @@ pub fn spawn(
                     Mesh2d(hover_mesh.clone()),
                     Transform::from_xyz(pos.x, pos.y, 1.0),
                     Tile::new(x as i32, y as i32, tile_type),
+                    tile_overlays::TileOverlay::default(),
                 ))
                 .with_children(|parent| {
                     parent.spawn((
@@ -184,14 +183,15 @@ pub fn spawn(
                 .observe(
                     |event: On<Pointer<Over>>,
                      enemies: Query<(&GridPosition, &Attack), With<EnemyUnit>>,
-                     tiles: Query<&mut Tile>| {
+                     tiles: Query<(Entity, &Tile)>,
+                     mut overlays: Query<&mut TileOverlay>| {
                         let entity = event.event_target();
                         if let Some((enemy_pos, attack)) = enemies.iter().find(|(pos, _)| {
-                            **pos == GridPosition::from(tiles.get(entity).unwrap())
+                            **pos == GridPosition::from(tiles.get(entity).unwrap().1)
                         }) {
-                            for mut tile in tiles {
+                            for (entity, tile) in tiles {
                                 if attack.range.contains(*enemy_pos, GridPosition::from(*tile)) {
-                                    tile.overlay.enemy_attack = true;
+                                    overlays.get_mut(entity).unwrap().enemy_attack = true;
                                 }
                             }
                         }
@@ -201,11 +201,15 @@ pub fn spawn(
                     OverlayLayer::Hover,
                     false,
                 ))
-                .observe(|_: On<Pointer<Out>>, tiles: Query<&mut Tile>| {
-                    for mut tile in tiles {
-                        tile.overlay.enemy_attack = false;
-                    }
-                })
+                .observe(
+                    |_: On<Pointer<Out>>,
+                     tiles: Query<Entity, With<Tile>>,
+                     mut overlays: Query<&mut TileOverlay>| {
+                        for entity in tiles {
+                            overlays.get_mut(entity).unwrap().enemy_attack = false;
+                        }
+                    },
+                )
                 .observe(
                     |event: On<Pointer<Click>>,
                      tiles: Query<(Entity, &Tile)>,
@@ -236,4 +240,68 @@ pub fn spawn(
                 );
         }
     }
+}
+
+pub fn build_tilemap(mut commands: Commands, tiles: Query<(Entity, &Tile)>) {
+    let map = tiles
+        .iter()
+        .map(|(entity, tile)| (GridPosition::from(tile), entity))
+        .collect();
+    commands.insert_resource(Tilemap(map));
+}
+
+pub fn los(from: GridPosition, to: GridPosition, tile_map: &Tilemap, tiles: &Query<&Tile>) -> bool {
+    for pos in line(from, to) {
+        if pos == from {
+            continue;
+        }
+        if let Some(&entity) = tile_map.0.get(&pos)
+            && let Ok(tile) = tiles.get(entity)
+            && tile.r#type == TileType::Wall
+        {
+            return false;
+        }
+    }
+    true
+}
+
+// from https://rosettacode.org/wiki/Bitmap/Bresenham's_line_algorithm#Rust
+fn line(from: GridPosition, to: GridPosition) -> Vec<GridPosition> {
+    let mut coordinates: Vec<GridPosition> = vec![];
+
+    let x1 = from.x;
+    let y1 = from.y;
+    let x2 = to.x;
+    let y2 = to.y;
+
+    let dx: i32 = i32::abs(x2 - x1);
+    let dy: i32 = i32::abs(y2 - y1);
+    let sx: i32 = if x1 < x2 { 1 } else { -1 };
+    let sy: i32 = if y1 < y2 { 1 } else { -1 };
+
+    let mut error: i32 = (if dx > dy { dx } else { -dy }) / 2;
+    let mut current_x: i32 = x1;
+    let mut current_y: i32 = y1;
+    loop {
+        coordinates.push(GridPosition {
+            x: current_x,
+            y: current_y,
+        });
+
+        if current_x == x2 && current_y == y2 {
+            break;
+        }
+
+        let error2: i32 = error;
+
+        if error2 > -dx {
+            error -= dy;
+            current_x += sx;
+        }
+        if error2 < dy {
+            error += dx;
+            current_y += sy;
+        }
+    }
+    coordinates
 }

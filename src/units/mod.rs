@@ -72,6 +72,17 @@ impl RangeShape {
             Self::Axis => dx == 0 || dy == 0,
         }
     }
+
+    pub fn contains_with_los<F>(&self, origin: GridPosition, tile: GridPosition, los: F) -> bool
+    where
+        F: Fn(GridPosition, GridPosition) -> bool,
+    {
+        if !self.contains(origin, tile) {
+            false
+        } else {
+            los(origin, tile)
+        }
+    }
 }
 
 #[derive(Component)]
