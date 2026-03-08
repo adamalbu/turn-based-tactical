@@ -29,15 +29,6 @@ pub fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
 
-pub fn on_player_turn_start(
-    mut commands: Commands,
-    units: Query<Entity, (With<units::PlayerUnit>, With<units::HasMoved>)>,
-) {
-    for entity in units {
-        commands.entity(entity).remove::<units::HasMoved>();
-    }
-}
-
 fn main() {
     App::new()
         .add_plugins((
@@ -83,7 +74,7 @@ fn main() {
             OnExit(PlayerTurnState::SelectedPosition),
             ui::despawn_action_bar,
         )
-        .add_systems(OnEnter(GameState::PlayerTurn), on_player_turn_start)
+        .add_systems(OnEnter(GameState::PlayerTurn), units::on_player_turn)
         .add_systems(OnEnter(GameState::EnemyTurn), units::on_enemy_turn)
         .add_systems(
             Update,

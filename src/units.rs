@@ -121,9 +121,24 @@ pub fn setup(
     let enemy_assets = &enemy_assets.into();
     let health_bar_assets = &health_bar_assets.into();
 
-    spawn_player(GridPosition { x: 1, y: 2 }, &mut commands, player_assets);
-    spawn_player(GridPosition { x: 1, y: 4 }, &mut commands, player_assets);
-    spawn_player(GridPosition { x: 1, y: 6 }, &mut commands, player_assets);
+    spawn_player(
+        GridPosition { x: 1, y: 2 },
+        &mut commands,
+        player_assets,
+        health_bar_assets,
+    );
+    // spawn_player(
+    //     GridPosition { x: 1, y: 4 },
+    //     &mut commands,
+    //     player_assets,
+    //     health_bar_assets,
+    // );
+    // spawn_player(
+    //     GridPosition { x: 1, y: 6 },
+    //     &mut commands,
+    //     player_assets,
+    //     health_bar_assets,
+    // );
 
     spawn_enemy(
         GridPosition { x: 10, y: 3 },
@@ -143,22 +158,31 @@ pub fn spawn_player(
     spawn_pos: GridPosition,
     commands: &mut Commands,
     player_assets: &Res<PlayerAssets>,
+    health_bar_assets: &Res<HealthBarAssets>,
 ) {
-    commands.spawn((
-        Mesh2d(player_assets.mesh.clone()),
-        MeshMaterial2d(player_assets.material.clone()),
-        Transform::default(),
-        Unit,
-        PlayerUnit,
-        Movement {
-            range: RangeShape::Square(3),
-        },
-        Attack {
-            damage: 4,
-            range: RangeShape::Axis,
-        },
-        spawn_pos,
-    ));
+    commands
+        .spawn((
+            Mesh2d(player_assets.mesh.clone()),
+            MeshMaterial2d(player_assets.material.clone()),
+            Transform::default(),
+            Unit,
+            PlayerUnit,
+            Movement {
+                range: RangeShape::Square(3),
+            },
+            Attack {
+                damage: 4,
+                range: RangeShape::Axis,
+            },
+            Health::new(10),
+            spawn_pos,
+        ))
+        .with_child((
+            HealthBarForeground,
+            Mesh2d(health_bar_assets.health_mesh.clone()),
+            MeshMaterial2d(health_bar_assets.health_material.clone()),
+            Transform::from_xyz(0.0, -30.0, 0.9),
+        ));
 }
 
 pub fn spawn_enemy(
@@ -263,6 +287,33 @@ pub fn handle_player_turn(
 pub fn check_win(enemies: Query<&EnemyUnit>, mut next_state: ResMut<NextState<GameState>>) {
     if enemies.count() == 0 {
         next_state.set(GameState::Win);
+    }
+}
+
+pub fn on_player_turn(
+    mut commands: Commands,
+    enemies: Query<(&GridPosition, Option<&Attack>), With<EnemyUnit>>,
+    players: Query<
+        (Entity, &GridPosition, Option<&mut Health>),
+        (With<PlayerUnit>, Without<EnemyUnit>),
+    >,
+) {
+    for (player_entity, player_pos, player_health) in players {
+        commands.entity(player_entity).remove::<HasMoved>();
+        if let Some(mut player_health) = player_health {
+            for (enemy_pos, enemy_attack) in enemies {
+                if let Some(enemy_attack) = enemy_attack
+                    && enemy_attack.range.contains(*enemy_pos, *player_pos)
+                {
+                    if player_health.hp <= enemy_attack.damage {
+                        commands.entity(player_entity).despawn();
+                    } else {
+                        player_health.hp -= enemy_attack.damage;
+                        println!("decrease player health")
+                    }
+                }
+            }
+        }
     }
 }
 
