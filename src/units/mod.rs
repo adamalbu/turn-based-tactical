@@ -4,6 +4,7 @@ pub mod enemy;
 pub mod player;
 
 use crate::{
+    game,
     grid::{self, GridPosition},
     interaction::SelectedPosition,
     ui::MoveButtonClicked,
@@ -104,31 +105,35 @@ pub fn setup(
     let enemy_assets = &enemy_assets.into();
     let health_bar_assets = &health_bar_assets.into();
 
-    player::spawn(
-        GridPosition { x: 1, y: 2 },
-        &mut commands,
-        player_assets,
-        health_bar_assets,
-    );
-    player::spawn(
-        GridPosition { x: 1, y: 4 },
-        &mut commands,
-        player_assets,
-        health_bar_assets,
-    );
-
-    enemy::spawn(
-        GridPosition { x: 10, y: 3 },
-        &mut commands,
-        enemy_assets,
-        health_bar_assets,
-    );
-    enemy::spawn(
-        GridPosition { x: 10, y: 5 },
-        &mut commands,
-        enemy_assets,
-        health_bar_assets,
-    );
+    for (y, row) in game::LEVEL.iter().enumerate() {
+        for (x, char) in row.chars().enumerate() {
+            match char {
+                'P' => {
+                    player::spawn(
+                        GridPosition {
+                            x: x as i32,
+                            y: y as i32,
+                        },
+                        &mut commands,
+                        player_assets,
+                        health_bar_assets,
+                    );
+                }
+                'E' => {
+                    enemy::spawn(
+                        GridPosition {
+                            x: x as i32,
+                            y: y as i32,
+                        },
+                        &mut commands,
+                        enemy_assets,
+                        health_bar_assets,
+                    );
+                }
+                _ => continue,
+            }
+        }
+    }
 }
 
 pub fn update_positions(

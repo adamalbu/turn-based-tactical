@@ -3,6 +3,7 @@ use std::ops::Sub;
 use bevy::prelude::*;
 
 use crate::{
+    game,
     tile_overlays::{OverlayLayer, TileOverlay, TileOverlayMaterials, update_overlay_material},
     units::{
         Attack,
@@ -12,8 +13,6 @@ use crate::{
 };
 
 pub const TILE_SIZE: f32 = 64.0;
-pub const MAP_WIDTH: u32 = 12;
-pub const MAP_HEIGHT: u32 = 9;
 
 const THICKNESS: f32 = 2.0;
 
@@ -110,13 +109,16 @@ pub fn spawn(
         TILE_SIZE - THICKNESS * 2.0,
     ));
 
+    let map_width = game::LEVEL[0].len();
+    let map_height = game::LEVEL.len();
+
     let offset = Vec2::new(
-        -(MAP_WIDTH as f32 * TILE_SIZE) / 2.0 + TILE_SIZE / 2.0,
-        -(MAP_HEIGHT as f32 * TILE_SIZE) / 2.0 + TILE_SIZE / 2.0,
+        -(map_width as f32 * TILE_SIZE) / 2.0 + TILE_SIZE / 2.0,
+        -(map_height as f32 * TILE_SIZE) / 2.0 + TILE_SIZE / 2.0,
     );
 
-    for x in 0..MAP_WIDTH {
-        for y in 0..MAP_HEIGHT {
+    for x in 0..map_width {
+        for y in 0..map_height {
             let pos = Vec2::new(x as f32 * TILE_SIZE, y as f32 * TILE_SIZE) + offset;
 
             commands

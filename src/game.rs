@@ -2,6 +2,17 @@ use bevy::prelude::*;
 
 use crate::{enemy, game, player};
 
+pub const LEVEL: &[&str] = &[
+    "............",
+    "............",
+    ".P..........",
+    "..........E.",
+    ".P..........",
+    "..........E.",
+    "............",
+    "............",
+];
+
 pub fn plugin(app: &mut App) {
     app.add_systems(OnEnter(GameState::Win), spawn_win_screen)
         .add_systems(OnEnter(GameState::Lose), spawn_lose_screen)
