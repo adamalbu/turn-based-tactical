@@ -10,6 +10,14 @@ use crate::{
     },
 };
 
+#[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TurnState {
+    #[default]
+    None,
+    SelectedUnit,
+    SelectedPosition,
+}
+
 #[derive(Component)]
 pub struct PlayerUnit;
 
@@ -42,7 +50,7 @@ pub fn spawn(
                 damage: 4,
                 range: RangeShape::Axis,
             },
-            Health::new(10),
+            // Health::new(10),
             spawn_pos,
         ))
         .with_child((

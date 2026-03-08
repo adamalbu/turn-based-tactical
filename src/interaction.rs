@@ -3,11 +3,8 @@ use bevy::prelude::*;
 use crate::grid::{GridClicked, GridPosition, Tile};
 use crate::tile_overlays::{OverlayLayer, set_overlay_at};
 
-use crate::units::{Attack, Unit};
-use crate::{
-    PlayerTurnState,
-    units::{self, player::PlayerUnit},
-};
+use crate::units::{self, player::PlayerUnit};
+use crate::units::{Attack, Unit, player};
 
 #[derive(Resource, Default, Deref, DerefMut, Clone, Copy)]
 pub struct SelectedPosition(pub Option<GridPosition>);
@@ -21,7 +18,7 @@ pub struct ValidMovement;
 pub fn grid_clicked(
     mut commands: Commands,
     mut ev_grid_clicked: MessageReader<GridClicked>,
-    mut next_state: ResMut<NextState<PlayerTurnState>>,
+    mut next_state: ResMut<NextState<player::TurnState>>,
     mut selected_unit: ResMut<units::SelectedUnit>,
     mut selected_position: ResMut<SelectedPosition>,
     mut tiles: Query<(&mut Tile, Has<ValidMovement>)>,
@@ -32,7 +29,7 @@ pub fn grid_clicked(
             commands.trigger(Deselect);
 
             selected_unit.0 = Some(entity);
-            next_state.set(PlayerTurnState::SelectedUnit);
+            next_state.set(player::TurnState::SelectedUnit);
             return;
         }
 
@@ -45,12 +42,12 @@ pub fn grid_clicked(
 
             if tiles.get(ev.tile).unwrap().1 {
                 selected_position.0 = Some(ev.click_pos);
-                next_state.set(PlayerTurnState::SelectedPosition);
+                next_state.set(player::TurnState::SelectedPosition);
                 return;
             }
         }
 
-        next_state.set(PlayerTurnState::None);
+        next_state.set(player::TurnState::None);
     }
 }
 

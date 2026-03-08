@@ -2,6 +2,8 @@
 
 use bevy::prelude::*;
 
+use crate::units::{enemy, player};
+
 mod grid;
 mod interaction;
 mod tile_overlays;
@@ -15,14 +17,6 @@ pub enum GameState {
     EnemyTurn,
     Win,
     Lose,
-}
-
-#[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PlayerTurnState {
-    #[default]
-    None,
-    SelectedUnit,
-    SelectedPosition,
 }
 
 pub fn spawn_camera(mut commands: Commands) {
@@ -49,7 +43,8 @@ fn main() {
         .init_resource::<units::enemy::EnemyAssets>()
         .init_resource::<units::HealthBarAssets>()
         .init_state::<GameState>()
-        .init_state::<PlayerTurnState>()
+        .init_state::<player::TurnState>()
+        .init_state::<enemy::TurnState>()
         .add_message::<grid::GridClicked>()
         .add_message::<ui::MoveButtonClicked>()
         .add_observer(interaction::on_deselect)
@@ -58,22 +53,24 @@ fn main() {
             (spawn_camera, grid::spawn, units::setup.after(grid::spawn)),
         )
         .add_systems(
-            OnEnter(PlayerTurnState::SelectedUnit),
+            OnEnter(player::TurnState::SelectedUnit),
             interaction::selected_player.run_if(in_state(GameState::PlayerTurn)),
         )
         .add_systems(
-            OnEnter(PlayerTurnState::None),
+            OnEnter(player::TurnState::None),
             (interaction::deselect, units::player::check_player_turn_over)
                 .run_if(in_state(GameState::PlayerTurn)),
         )
         .add_systems(
-            OnEnter(PlayerTurnState::SelectedPosition),
+            OnEnter(player::TurnState::SelectedPosition),
             (interaction::selected_position, ui::spawn_action_bar),
         )
         .add_systems(
-            OnExit(PlayerTurnState::SelectedPosition),
+            OnExit(player::TurnState::SelectedPosition),
             ui::despawn_action_bar,
         )
+        .add_systems(OnEnter(enemy::TurnState::TakeDamage), enemy::take_damage)
+        .add_systems(OnEnter(enemy::TurnState::Move), enemy::r#move)
         .add_systems(
             OnEnter(GameState::PlayerTurn),
             units::player::on_player_turn,
@@ -86,7 +83,7 @@ fn main() {
                 tile_overlays::update_overlay_materials,
                 interaction::grid_clicked,
                 (ui::handle_move_button, units::move_unit)
-                    .run_if(in_state(PlayerTurnState::SelectedPosition)),
+                    .run_if(in_state(player::TurnState::SelectedPosition)),
                 units::update_positions,
                 units::update_health_bar,
             ),

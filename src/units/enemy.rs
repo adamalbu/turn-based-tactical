@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use std::collections::HashSet;
 use std::time::Duration;
 
 use crate::{
@@ -10,6 +11,14 @@ use crate::{
         player::PlayerUnit,
     },
 };
+
+#[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TurnState {
+    #[default]
+    None,
+    TakeDamage,
+    Move,
+}
 
 #[derive(Component)]
 pub struct EnemyUnit;
@@ -58,24 +67,19 @@ pub fn spawn(
         });
 }
 
-pub fn on_enemy_turn(
-    mut commands: Commands,
-    enemies: Query<
-        (
-            Entity,
-            &mut GridPosition,
-            Option<&Movement>,
-            Option<&mut Health>,
-        ),
-        With<EnemyUnit>,
-    >,
-    players: Query<(&GridPosition, &Attack), (With<PlayerUnit>, Without<EnemyUnit>)>,
-    tiles: Query<(Entity, &Tile)>,
-    mut next_state: ResMut<NextState<GameState>>,
-) {
+pub fn on_enemy_turn(mut next_turn: ResMut<NextState<TurnState>>) {
     bevy::platform::thread::sleep(Duration::from_millis(500));
 
-    for (entity, mut pos, movement, mut health) in enemies {
+    next_turn.set(TurnState::TakeDamage);
+}
+
+pub fn take_damage(
+    mut commands: Commands,
+    enemies: Query<(Entity, &mut GridPosition, Option<&mut Health>), With<EnemyUnit>>,
+    players: Query<(&GridPosition, &Attack), (With<PlayerUnit>, Without<EnemyUnit>)>,
+    mut next_turn: ResMut<NextState<TurnState>>,
+) {
+    for (entity, pos, mut health) in enemies {
         for (player_pos, attack) in players {
             if attack.range.contains(*player_pos, *pos)
                 && let Some(ref mut health) = health
@@ -87,20 +91,42 @@ pub fn on_enemy_turn(
                 }
             }
         }
+    }
 
-        let (target, _) = players
+    next_turn.set(TurnState::Move);
+}
+
+pub fn r#move(
+    mut enemies: Query<(&mut GridPosition, Option<&Movement>), With<EnemyUnit>>,
+    players: Query<&GridPosition, (With<PlayerUnit>, Without<EnemyUnit>)>,
+    tiles: Query<(Entity, &Tile)>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    let mut occupied: HashSet<(i32, i32)> = enemies.iter().map(|(pos, _)| (pos.x, pos.y)).collect();
+
+    for (mut pos, movement) in &mut enemies {
+        let target = players
             .iter()
-            .min_by_key(|(pp, _)| (pp.x - pos.x).abs() + (pp.y - pos.y).abs())
+            .min_by_key(|pp| (pp.x - pos.x).abs() + (pp.y - pos.y).abs())
             .unwrap();
 
         if let Some(movement) = movement {
             let move_to = tiles
                 .iter()
-                .filter(|(_, tile)| movement.range.contains(*pos, GridPosition::from(*tile)))
-                .min_by_key(|(_, tile)| (tile.x - target.x).abs() + (tile.y - target.y).abs())
-                .unwrap();
+                .filter(|(_, tile)| {
+                    let tp = GridPosition::from(*tile);
+                    movement.range.contains(*pos, tp)
+                        && !players.iter().any(|pp| *pp == tp)
+                        && !occupied.contains(&(tp.x, tp.y))
+                })
+                .min_by_key(|(_, tile)| (tile.x - target.x).abs() + (tile.y - target.y).abs());
 
-            *pos = GridPosition::from(*(move_to.1));
+            if let Some((_, tile)) = move_to {
+                // remove old position, insert new one
+                occupied.remove(&(pos.x, pos.y));
+                *pos = GridPosition::from(*tile);
+                occupied.insert((pos.x, pos.y));
+            }
         }
     }
 

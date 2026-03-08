@@ -4,7 +4,7 @@ pub mod enemy;
 pub mod player;
 
 use crate::{
-    GameState, PlayerTurnState,
+    GameState,
     grid::{self, GridPosition},
     interaction::SelectedPosition,
     ui::MoveButtonClicked,
@@ -175,7 +175,7 @@ pub fn move_unit(
     target_pos: Res<SelectedPosition>,
     mut player_transform: Query<&mut GridPosition, With<PlayerUnit>>,
     mut ev_move_clicked: MessageReader<MoveButtonClicked>,
-    mut next_state: ResMut<NextState<PlayerTurnState>>,
+    mut next_state: ResMut<NextState<player::TurnState>>,
 ) {
     for _ in ev_move_clicked.read() {
         let mut transform = player_transform.get_mut(selected_unit.unwrap()).unwrap();
@@ -185,7 +185,7 @@ pub fn move_unit(
             .entity(selected_unit.unwrap())
             .insert(player::HasMoved);
 
-        next_state.set(PlayerTurnState::None);
+        next_state.set(player::TurnState::None);
     }
 }
 
