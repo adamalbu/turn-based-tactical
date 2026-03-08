@@ -6,7 +6,7 @@ use crate::{
     ui::MoveButtonClicked,
     units::{
         Attack, Health, HealthBarAssets, HealthBarForeground, Movement, RangeShape, Unit,
-        enemy::EnemyUnit,
+        enemy::{self, EnemyUnit},
     },
 };
 
@@ -16,6 +16,7 @@ pub enum TurnState {
     None,
     SelectedUnit,
     SelectedPosition,
+    End,
 }
 
 #[derive(Component)]
@@ -63,12 +64,12 @@ pub fn spawn(
 
 pub fn check_player_turn_over(
     mut ev_move_clicked: MessageReader<MoveButtonClicked>,
-    mut next_state: ResMut<NextState<GameState>>,
+    mut next_turn: ResMut<NextState<TurnState>>,
     actionable_units: Query<&PlayerUnit, Without<HasMoved>>,
 ) {
     for _ in ev_move_clicked.read() {
         if actionable_units.count() == 0 {
-            next_state.set(GameState::EnemyTurn)
+            next_turn.set(TurnState::End);
         }
     }
 }
@@ -98,4 +99,15 @@ pub fn on_player_turn(
             }
         }
     }
+}
+
+pub fn end_turn(
+    mut next_player_turn: ResMut<NextState<TurnState>>,
+    mut next_enemy_turn: ResMut<NextState<enemy::TurnState>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    // println!("end player turn");
+    next_player_turn.set(TurnState::None);
+    next_enemy_turn.set(enemy::TurnState::None);
+    next_state.set(GameState::EnemyTurn);
 }

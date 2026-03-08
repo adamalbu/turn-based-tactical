@@ -11,7 +11,7 @@ mod ui;
 mod units;
 
 #[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum GameState {
+enum GameState {
     #[default]
     PlayerTurn,
     EnemyTurn,
@@ -21,6 +21,12 @@ pub enum GameState {
 
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
+}
+
+pub fn check_win(enemies: Query<&enemy::EnemyUnit>, mut next_state: ResMut<NextState<GameState>>) {
+    if enemies.count() == 0 {
+        next_state.set(GameState::Win);
+    }
 }
 
 fn main() {
@@ -69,8 +75,10 @@ fn main() {
             OnExit(player::TurnState::SelectedPosition),
             ui::despawn_action_bar,
         )
+        .add_systems(OnEnter(player::TurnState::End), player::end_turn)
         .add_systems(OnEnter(enemy::TurnState::TakeDamage), enemy::take_damage)
         .add_systems(OnEnter(enemy::TurnState::Move), enemy::r#move)
+        .add_systems(OnEnter(enemy::TurnState::End), enemy::end_turn)
         .add_systems(
             OnEnter(GameState::PlayerTurn),
             units::player::on_player_turn,
@@ -88,6 +96,6 @@ fn main() {
                 units::update_health_bar,
             ),
         )
-        .add_systems(PostUpdate, units::check_win)
+        .add_systems(PostUpdate, check_win)
         .run();
 }

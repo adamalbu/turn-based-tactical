@@ -4,12 +4,11 @@ pub mod enemy;
 pub mod player;
 
 use crate::{
-    GameState,
     grid::{self, GridPosition},
     interaction::SelectedPosition,
     ui::MoveButtonClicked,
     units::{
-        enemy::{EnemyAssets, EnemyUnit},
+        enemy::EnemyAssets,
         player::{PlayerAssets, PlayerUnit},
     },
 };
@@ -186,11 +185,5 @@ pub fn move_unit(
             .insert(player::HasMoved);
 
         next_state.set(player::TurnState::None);
-    }
-}
-
-pub fn check_win(enemies: Query<&EnemyUnit>, mut next_state: ResMut<NextState<GameState>>) {
-    if enemies.count() == 0 {
-        next_state.set(GameState::Win);
     }
 }

@@ -8,7 +8,7 @@ use crate::{
     grid::{GridPosition, Tile},
     units::{
         Attack, Health, HealthBarAssets, HealthBarForeground, Movement, RangeShape, Unit,
-        player::PlayerUnit,
+        player::{self, PlayerUnit},
     },
 };
 
@@ -18,6 +18,7 @@ pub enum TurnState {
     None,
     TakeDamage,
     Move,
+    End,
 }
 
 #[derive(Component)]
@@ -100,7 +101,7 @@ pub fn r#move(
     mut enemies: Query<(&mut GridPosition, Option<&Movement>), With<EnemyUnit>>,
     players: Query<&GridPosition, (With<PlayerUnit>, Without<EnemyUnit>)>,
     tiles: Query<(Entity, &Tile)>,
-    mut next_state: ResMut<NextState<GameState>>,
+    mut next_turn: ResMut<NextState<TurnState>>,
 ) {
     let mut occupied: HashSet<(i32, i32)> = enemies.iter().map(|(pos, _)| (pos.x, pos.y)).collect();
 
@@ -130,5 +131,15 @@ pub fn r#move(
         }
     }
 
+    next_turn.set(TurnState::End);
+}
+
+pub fn end_turn(
+    mut next_player_turn: ResMut<NextState<player::TurnState>>,
+    mut next_enemy_turn: ResMut<NextState<TurnState>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    next_player_turn.set(player::TurnState::None);
+    next_enemy_turn.set(TurnState::None);
     next_state.set(GameState::PlayerTurn);
 }
