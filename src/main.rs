@@ -45,8 +45,8 @@ fn main() {
         .insert_resource(ClearColor(Color::WHITE))
         .init_resource::<units::SelectedUnit>()
         .init_resource::<interaction::SelectedPosition>()
-        .init_resource::<units::PlayerAssets>()
-        .init_resource::<units::EnemyAssets>()
+        .init_resource::<units::player::PlayerAssets>()
+        .init_resource::<units::enemy::EnemyAssets>()
         .init_resource::<units::HealthBarAssets>()
         .init_state::<GameState>()
         .init_state::<PlayerTurnState>()
@@ -63,7 +63,7 @@ fn main() {
         )
         .add_systems(
             OnEnter(PlayerTurnState::None),
-            (interaction::deselect, units::handle_player_turn)
+            (interaction::deselect, units::player::check_player_turn_over)
                 .run_if(in_state(GameState::PlayerTurn)),
         )
         .add_systems(
@@ -74,8 +74,11 @@ fn main() {
             OnExit(PlayerTurnState::SelectedPosition),
             ui::despawn_action_bar,
         )
-        .add_systems(OnEnter(GameState::PlayerTurn), units::on_player_turn)
-        .add_systems(OnEnter(GameState::EnemyTurn), units::on_enemy_turn)
+        .add_systems(
+            OnEnter(GameState::PlayerTurn),
+            units::player::on_player_turn,
+        )
+        .add_systems(OnEnter(GameState::EnemyTurn), units::enemy::on_enemy_turn)
         .add_systems(
             Update,
             (

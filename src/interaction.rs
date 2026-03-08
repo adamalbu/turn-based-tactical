@@ -6,7 +6,7 @@ use crate::tile_overlays::{OverlayLayer, set_overlay_at};
 use crate::units::{Attack, Unit};
 use crate::{
     PlayerTurnState,
-    units::{self, PlayerUnit},
+    units::{self, player::PlayerUnit},
 };
 
 #[derive(Resource, Default, Deref, DerefMut, Clone, Copy)]
@@ -25,7 +25,6 @@ pub fn grid_clicked(
     mut selected_unit: ResMut<units::SelectedUnit>,
     mut selected_position: ResMut<SelectedPosition>,
     mut tiles: Query<(&mut Tile, Has<ValidMovement>)>,
-    query: Query<(&GridPosition, &units::Movement), With<PlayerUnit>>,
 ) {
     for ev in ev_grid_clicked.read() {
         // Select unit
@@ -38,10 +37,7 @@ pub fn grid_clicked(
         }
 
         // Select position
-        if let Some(player_entity) = **selected_unit {
-            let (origin, movement) = query.get(player_entity).unwrap();
-            let range = movement.range;
-
+        if (**selected_unit).is_some() {
             // Clear selection
             for (mut tile, _) in tiles.iter_mut() {
                 tile.overlay.selected = false;
@@ -112,7 +108,7 @@ pub fn selected_player(
     }
 }
 
-pub fn selected_position(selected_position: Res<SelectedPosition>, mut tiles: Query<(&mut Tile)>) {
+pub fn selected_position(selected_position: Res<SelectedPosition>, mut tiles: Query<&mut Tile>) {
     set_overlay_at(
         selected_position.unwrap(),
         OverlayLayer::Selected,

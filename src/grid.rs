@@ -2,10 +2,14 @@ use std::ops::Sub;
 
 use bevy::prelude::*;
 
-use crate::tile_overlays::{
-    OverlayLayer, TileOverlay, TileOverlayMaterials, update_overlay_material,
+use crate::{
+    tile_overlays::{OverlayLayer, TileOverlay, TileOverlayMaterials, update_overlay_material},
+    units::{
+        Attack,
+        enemy::EnemyUnit,
+        player::{HasMoved, PlayerUnit},
+    },
 };
-use crate::units::{Attack, EnemyUnit, HasMoved, PlayerUnit};
 
 pub const TILE_SIZE: f32 = 64.0;
 pub const MAP_WIDTH: u32 = 12;
