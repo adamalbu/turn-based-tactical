@@ -61,16 +61,6 @@ fn enemy_plugin(app: &mut App) {
         );
 }
 
-fn tile_overlays_plugin(app: &mut App) {
-    app.add_systems(
-        Update,
-        (
-            tile_overlays::update_range_overlay.before(tile_overlays::update_overlay_materials),
-            tile_overlays::update_overlay_materials,
-        ),
-    );
-}
-
 fn units_plugin(app: &mut App) {
     app.init_resource::<units::SelectedUnit>()
         .init_resource::<units::HealthBarAssets>()
@@ -83,12 +73,6 @@ fn units_plugin(app: &mut App) {
                 units::move_unit,
             ),
         );
-}
-
-fn grid_plugin(app: &mut App) {
-    app.add_systems(Startup, grid::spawn)
-        .add_message::<grid::GridClicked>()
-        .add_systems(Update, interaction::grid_clicked);
 }
 
 fn main() {
@@ -105,9 +89,9 @@ fn main() {
             MeshPickingPlugin,
             player_plugin,
             enemy_plugin,
-            tile_overlays_plugin,
+            tile_overlays::plugin,
             units_plugin,
-            grid_plugin,
+            grid::plugin,
             game::plugin,
         ))
         .insert_resource(ClearColor(Color::WHITE))

@@ -32,7 +32,7 @@ impl TileOverlay {
         }
     }
 
-    pub fn get_material(&self, materials: &Res<TileOverlayMaterials>) -> Handle<ColorMaterial> {
+    pub fn get_material(&self, materials: &Res<Materials>) -> Handle<ColorMaterial> {
         if self.hover {
             materials.hover.clone()
         } else if self.selected {
@@ -52,7 +52,7 @@ impl TileOverlay {
 }
 
 #[derive(Resource, Clone)]
-pub struct TileOverlayMaterials {
+pub struct Materials {
     pub none: Handle<ColorMaterial>,
     pub r#move: Handle<ColorMaterial>,
     pub enemy_attack: Handle<ColorMaterial>,
@@ -60,6 +60,28 @@ pub struct TileOverlayMaterials {
     pub move_attack: Handle<ColorMaterial>,
     pub selected: Handle<ColorMaterial>,
     pub hover: Handle<ColorMaterial>,
+}
+
+pub(crate) fn plugin(app: &mut App) {
+    app.add_systems(PreStartup, setup_assets).add_systems(
+        Update,
+        (
+            update_range_overlay.before(update_overlay_materials),
+            update_overlay_materials,
+        ),
+    );
+}
+
+pub fn setup_assets(mut commands: Commands, mut materials: ResMut<Assets<ColorMaterial>>) {
+    commands.insert_resource(Materials {
+        none: materials.add(Color::NONE),
+        r#move: materials.add(Color::srgba(0.0, 1.0, 0.0, 0.5)),
+        attack: materials.add(Color::srgba(1.0, 0.0, 0.0, 0.5)),
+        enemy_attack: materials.add(Color::srgba(1.0, 0.0, 0.0, 0.3)),
+        move_attack: materials.add(Color::srgba(0.5, 0.5, 0.0, 0.5)),
+        selected: materials.add(Color::srgba(0.0, 0.0, 1.0, 0.5)),
+        hover: materials.add(Color::srgba(1.0, 1.0, 0.0, 0.5)),
+    });
 }
 
 pub fn update_overlay_material<E: EntityEvent>(
@@ -94,7 +116,7 @@ pub fn update_range_overlay(tiles: Query<(&mut Tile, Has<ValidMovement>)>) {
 pub fn update_overlay_materials(
     tiles: Query<(&Tile, &Children), Changed<Tile>>,
     mut overlays: Query<&mut MeshMaterial2d<ColorMaterial>>,
-    overlay_materials: Res<TileOverlayMaterials>,
+    overlay_materials: Res<Materials>,
 ) {
     for (tile, children) in tiles {
         let overlay_child = children.first().unwrap();

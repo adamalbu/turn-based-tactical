@@ -3,8 +3,8 @@ use std::ops::Sub;
 use bevy::prelude::*;
 
 use crate::{
-    game,
-    tile_overlays::{OverlayLayer, TileOverlay, TileOverlayMaterials, update_overlay_material},
+    game, interaction,
+    tile_overlays::{self, OverlayLayer, TileOverlay, update_overlay_material},
     units::{
         Attack,
         enemy::EnemyUnit,
@@ -23,18 +23,34 @@ pub struct GridClicked {
     pub unit: Option<Entity>,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum TileType {
+    Floor,
+    Wall,
+}
+
+#[derive(Resource, Default)]
+pub struct TileAssets {
+    floor_mesh: Handle<Mesh>,
+    floor_material: Handle<ColorMaterial>,
+    wall_mesh: Handle<Mesh>,
+    wall_material: Handle<ColorMaterial>,
+}
+
 #[derive(Component, Debug, Clone, Copy)]
 pub struct Tile {
     pub x: i32,
     pub y: i32,
+    pub r#type: TileType,
     pub overlay: TileOverlay,
 }
 
 impl Tile {
-    pub fn new(x: i32, y: i32) -> Self {
+    pub fn new(x: i32, y: i32, r#type: TileType) -> Self {
         Self {
             x,
             y,
+            r#type,
             overlay: TileOverlay::default(),
         }
     }
@@ -84,25 +100,33 @@ impl From<&Tile> for GridPosition {
     }
 }
 
-pub fn spawn(
+pub fn plugin(app: &mut App) {
+    app.add_systems(PreStartup, setup_assets)
+        .add_systems(Startup, spawn)
+        .add_message::<GridClicked>()
+        .add_systems(Update, interaction::grid_clicked);
+}
+
+pub fn setup_assets(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    let overlay_materials = TileOverlayMaterials {
-        none: materials.add(Color::NONE),
-        r#move: materials.add(Color::srgba(0.0, 1.0, 0.0, 0.5)),
-        attack: materials.add(Color::srgba(1.0, 0.0, 0.0, 0.5)),
-        enemy_attack: materials.add(Color::srgba(1.0, 0.0, 0.0, 0.3)),
-        move_attack: materials.add(Color::srgba(0.5, 0.5, 0.0, 0.5)),
-        selected: materials.add(Color::srgba(0.0, 0.0, 1.0, 0.5)),
-        hover: materials.add(Color::srgba(1.0, 1.0, 0.0, 0.5)),
-    };
+    commands.insert_resource(TileAssets {
+        floor_mesh: meshes.add(Rectangle::new(TILE_SIZE, TILE_SIZE).to_ring(THICKNESS)),
+        floor_material: materials.add(Color::BLACK),
+        wall_mesh: meshes.add(Rectangle::new(TILE_SIZE, TILE_SIZE)),
+        wall_material: materials.add(Color::srgb(0.7, 0.0, 0.0)),
+    });
+}
 
+pub fn spawn(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    tile_assets: ResMut<TileAssets>,
+    overlay_materials: Res<tile_overlays::Materials>,
+) {
     let hover_mesh = meshes.add(Rectangle::new(TILE_SIZE, TILE_SIZE));
-
-    let tile_mesh = meshes.add(Rectangle::new(TILE_SIZE, TILE_SIZE).to_ring(THICKNESS));
-    let tile_material = materials.add(Color::BLACK);
 
     let overlay_mesh = meshes.add(Rectangle::new(
         TILE_SIZE - THICKNESS * 2.0,
@@ -117,15 +141,28 @@ pub fn spawn(
         -(map_height as f32 * TILE_SIZE) / 2.0 + TILE_SIZE / 2.0,
     );
 
-    for x in 0..map_width {
-        for y in 0..map_height {
+    for (y, row) in game::LEVEL.iter().enumerate().rev() {
+        for (x, char) in row.chars().enumerate() {
             let pos = Vec2::new(x as f32 * TILE_SIZE, y as f32 * TILE_SIZE) + offset;
+
+            let (tile_mesh, tile_material, tile_type) = match char {
+                'W' => (
+                    tile_assets.wall_mesh.clone(),
+                    tile_assets.wall_material.clone(),
+                    TileType::Wall,
+                ),
+                _ => (
+                    tile_assets.floor_mesh.clone(),
+                    tile_assets.floor_material.clone(),
+                    TileType::Floor,
+                ),
+            };
 
             commands
                 .spawn((
                     Mesh2d(hover_mesh.clone()),
                     Transform::from_xyz(pos.x, pos.y, 1.0),
-                    Tile::new(x as i32, y as i32),
+                    Tile::new(x as i32, y as i32, tile_type),
                 ))
                 .with_children(|parent| {
                     parent.spawn((
@@ -199,6 +236,4 @@ pub fn spawn(
                 );
         }
     }
-
-    commands.insert_resource(overlay_materials);
 }
