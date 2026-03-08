@@ -106,7 +106,6 @@ pub fn end_turn(
     mut next_enemy_turn: ResMut<NextState<enemy::TurnState>>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    // println!("end player turn");
     next_player_turn.set(TurnState::None);
     next_enemy_turn.set(enemy::TurnState::None);
     next_state.set(GameState::EnemyTurn);

@@ -110,18 +110,12 @@ pub fn setup(
         player_assets,
         health_bar_assets,
     );
-    // player::spawn(
-    //     GridPosition { x: 1, y: 4 },
-    //     &mut commands,
-    //     player_assets,
-    //     health_bar_assets,
-    // );
-    // player::spawn(
-    //     GridPosition { x: 1, y: 6 },
-    //     &mut commands,
-    //     player_assets,
-    //     health_bar_assets,
-    // );
+    player::spawn(
+        GridPosition { x: 1, y: 4 },
+        &mut commands,
+        player_assets,
+        health_bar_assets,
+    );
 
     enemy::spawn(
         GridPosition { x: 10, y: 3 },

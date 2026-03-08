@@ -23,7 +23,14 @@ pub fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
 
-pub fn check_win(enemies: Query<&enemy::EnemyUnit>, mut next_state: ResMut<NextState<GameState>>) {
+fn check_win(
+    enemies: Query<&enemy::EnemyUnit>,
+    players: Query<&player::PlayerUnit>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if players.count() == 0 {
+        next_state.set(GameState::Lose);
+    }
     if enemies.count() == 0 {
         next_state.set(GameState::Win);
     }
