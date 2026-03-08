@@ -6,6 +6,7 @@ use crate::{
 };
 
 #[derive(Clone, Copy)]
+#[allow(dead_code)]
 pub enum OverlayLayer {
     Move,
     Attack,

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::grid::{self, GridClicked, GridPosition, Tile, los};
-use crate::tile_overlays::{self, OverlayLayer, TileOverlay, set_overlay_at};
+use crate::tile_overlays::{OverlayLayer, TileOverlay, set_overlay_at};
 
 use crate::units::{self, player::PlayerUnit};
 use crate::units::{Attack, Unit, player};
@@ -70,6 +70,7 @@ pub fn deselect(mut commands: Commands, mut selected_unit: ResMut<units::Selecte
     commands.trigger(Deselect);
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn selected_player(
     mut commands: Commands,
     selected_unit: ResMut<units::SelectedUnit>,
@@ -86,7 +87,7 @@ pub fn selected_player(
     let attack_range = player_attack.get(entity).unwrap().range;
     let move_range = movement.range;
 
-    for (tile_entity, mut tile) in tiles {
+    for (tile_entity, tile) in tiles {
         let dx = (tile.x - origin.x).abs();
         let dy = (tile.y - origin.y).abs();
 

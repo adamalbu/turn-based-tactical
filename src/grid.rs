@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ops::Sub};
 
-use bevy::{ecs::system::QueryLens, prelude::*};
+use bevy::prelude::*;
 
 use crate::{
     game, interaction,
@@ -265,7 +265,7 @@ pub fn los(from: GridPosition, to: GridPosition, tile_map: &Tilemap, tiles: &Que
     true
 }
 
-// from https://rosettacode.org/wiki/Bitmap/Bresenham's_line_algorithm#Rust
+// https://rosettacode.org/wiki/Bitmap/Bresenham's_line_algorithm#Rust
 fn line(from: GridPosition, to: GridPosition) -> Vec<GridPosition> {
     let mut coordinates: Vec<GridPosition> = vec![];
 
