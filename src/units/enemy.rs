@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::time::Duration;
 
 use crate::{
-    GameState,
+    game,
     grid::{GridPosition, Tile},
     units::{
         Attack, Health, HealthBarAssets, HealthBarForeground, Movement, RangeShape, Unit,
@@ -137,9 +137,9 @@ pub fn r#move(
 pub fn end_turn(
     mut next_player_turn: ResMut<NextState<player::TurnState>>,
     mut next_enemy_turn: ResMut<NextState<TurnState>>,
-    mut next_state: ResMut<NextState<GameState>>,
+    mut next_state: ResMut<NextState<game::GameState>>,
 ) {
     next_player_turn.set(player::TurnState::None);
     next_enemy_turn.set(TurnState::None);
-    next_state.set(GameState::PlayerTurn);
+    next_state.set(game::GameState::PlayerTurn);
 }

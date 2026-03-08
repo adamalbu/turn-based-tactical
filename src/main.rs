@@ -4,36 +4,15 @@ use bevy::prelude::*;
 
 use crate::units::{enemy, player};
 
+mod game;
 mod grid;
 mod interaction;
 mod tile_overlays;
 mod ui;
 mod units;
 
-#[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum GameState {
-    #[default]
-    PlayerTurn,
-    EnemyTurn,
-    Win,
-    Lose,
-}
-
 pub fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
-}
-
-fn check_win(
-    enemies: Query<&enemy::EnemyUnit>,
-    players: Query<&player::PlayerUnit>,
-    mut next_state: ResMut<NextState<GameState>>,
-) {
-    if players.count() == 0 {
-        next_state.set(GameState::Lose);
-    }
-    if enemies.count() == 0 {
-        next_state.set(GameState::Win);
-    }
 }
 
 fn player_plugin(app: &mut App) {
@@ -44,12 +23,12 @@ fn player_plugin(app: &mut App) {
         .add_observer(interaction::on_deselect)
         .add_systems(
             OnEnter(player::TurnState::SelectedUnit),
-            interaction::selected_player.run_if(in_state(GameState::PlayerTurn)),
+            interaction::selected_player.run_if(in_state(game::GameState::PlayerTurn)),
         )
         .add_systems(
             OnEnter(player::TurnState::None),
             (interaction::deselect, units::player::check_player_turn_over)
-                .run_if(in_state(GameState::PlayerTurn)),
+                .run_if(in_state(game::GameState::PlayerTurn)),
         )
         .add_systems(
             OnEnter(player::TurnState::SelectedPosition),
@@ -61,7 +40,7 @@ fn player_plugin(app: &mut App) {
         )
         .add_systems(OnEnter(player::TurnState::End), player::end_turn)
         .add_systems(
-            OnEnter(GameState::PlayerTurn),
+            OnEnter(game::GameState::PlayerTurn),
             units::player::on_player_turn,
         )
         .add_systems(
@@ -76,7 +55,10 @@ fn enemy_plugin(app: &mut App) {
         .add_systems(OnEnter(enemy::TurnState::TakeDamage), enemy::take_damage)
         .add_systems(OnEnter(enemy::TurnState::Move), enemy::r#move)
         .add_systems(OnEnter(enemy::TurnState::End), enemy::end_turn)
-        .add_systems(OnEnter(GameState::EnemyTurn), units::enemy::on_enemy_turn);
+        .add_systems(
+            OnEnter(game::GameState::EnemyTurn),
+            units::enemy::on_enemy_turn,
+        );
 }
 
 fn tile_overlays_plugin(app: &mut App) {
@@ -126,10 +108,10 @@ fn main() {
             tile_overlays_plugin,
             units_plugin,
             grid_plugin,
+            game::plugin,
         ))
         .insert_resource(ClearColor(Color::WHITE))
-        .init_state::<GameState>()
+        .init_state::<game::GameState>()
         .add_systems(Startup, spawn_camera)
-        .add_systems(PostUpdate, check_win)
         .run();
 }

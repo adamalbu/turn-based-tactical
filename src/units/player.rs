@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    GameState,
+    game,
     grid::GridPosition,
     ui::MoveButtonClicked,
     units::{
@@ -51,7 +51,7 @@ pub fn spawn(
                 damage: 4,
                 range: RangeShape::Axis,
             },
-            // Health::new(10),
+            Health::new(8),
             spawn_pos,
         ))
         .with_child((
@@ -104,9 +104,9 @@ pub fn on_player_turn(
 pub fn end_turn(
     mut next_player_turn: ResMut<NextState<TurnState>>,
     mut next_enemy_turn: ResMut<NextState<enemy::TurnState>>,
-    mut next_state: ResMut<NextState<GameState>>,
+    mut next_state: ResMut<NextState<game::GameState>>,
 ) {
     next_player_turn.set(TurnState::None);
     next_enemy_turn.set(enemy::TurnState::None);
-    next_state.set(GameState::EnemyTurn);
+    next_state.set(game::GameState::EnemyTurn);
 }
