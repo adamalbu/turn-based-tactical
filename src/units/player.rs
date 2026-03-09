@@ -3,9 +3,11 @@ use bevy::prelude::*;
 use crate::{
     game,
     grid::GridPosition,
-    ui::MoveButtonClicked,
+    interaction,
+    ui::{self, MoveButtonClicked},
     units::{
         Attack, Health, HealthBarAssets, HealthBarForeground, Movement, RangeShape, Unit,
+        UnitActionRange,
         enemy::{self, EnemyUnit},
     },
 };
@@ -30,6 +32,34 @@ pub struct PlayerAssets {
 
 #[derive(Component)]
 pub struct HasMoved;
+
+pub fn plugin(app: &mut App) {
+    app.init_resource::<PlayerAssets>()
+        .init_state::<TurnState>()
+        .add_message::<ui::MoveButtonClicked>()
+        .init_resource::<interaction::SelectedPosition>()
+        .add_observer(interaction::on_deselect)
+        .add_systems(
+            OnEnter(TurnState::SelectedUnit),
+            interaction::selected_player.run_if(in_state(game::GameState::PlayerTurn)),
+        )
+        .add_systems(
+            OnEnter(TurnState::None),
+            (interaction::deselect, check_player_turn_over)
+                .run_if(in_state(game::GameState::PlayerTurn)),
+        )
+        .add_systems(
+            OnEnter(TurnState::SelectedPosition),
+            (interaction::selected_position, ui::spawn_action_bar),
+        )
+        .add_systems(OnExit(TurnState::SelectedPosition), ui::despawn_action_bar)
+        .add_systems(OnEnter(TurnState::End), end_turn)
+        .add_systems(OnEnter(game::GameState::PlayerTurn), on_player_turn)
+        .add_systems(
+            Update,
+            ui::handle_move_button.run_if(in_state(TurnState::SelectedPosition)),
+        );
+}
 
 pub fn spawn(
     spawn_pos: GridPosition,
@@ -76,18 +106,19 @@ pub fn check_player_turn_over(
 
 pub fn on_player_turn(
     mut commands: Commands,
-    enemies: Query<(&GridPosition, Option<&Attack>), With<EnemyUnit>>,
+    enemies: Query<(Entity, Option<&Attack>), With<EnemyUnit>>,
     players: Query<
         (Entity, &GridPosition, Option<&mut Health>),
         (With<PlayerUnit>, Without<EnemyUnit>),
     >,
+    action_range: Res<UnitActionRange>,
 ) {
     for (player_entity, player_pos, player_health) in players {
         commands.entity(player_entity).remove::<HasMoved>();
         if let Some(mut player_health) = player_health {
-            for (enemy_pos, enemy_attack) in enemies {
+            for (enemy_entity, enemy_attack) in enemies {
                 if let Some(enemy_attack) = enemy_attack
-                    && enemy_attack.range.contains(*enemy_pos, *player_pos)
+                    && action_range.attack_tiles[&enemy_entity].contains(player_pos)
                 {
                     if player_health.hp <= enemy_attack.damage {
                         commands.entity(player_entity).despawn();

@@ -1,11 +1,13 @@
+use std::collections::{HashMap, HashSet};
+
 use bevy::prelude::*;
 
 pub mod enemy;
 pub mod player;
 
 use crate::{
-    game,
-    grid::{self, GridPosition},
+    game::{self},
+    grid::{self, GridPosition, Tile, Tilemap, los},
     interaction::SelectedPosition,
     ui::MoveButtonClicked,
     units::{
@@ -13,6 +15,12 @@ use crate::{
         player::{PlayerAssets, PlayerUnit},
     },
 };
+
+#[derive(Resource, Default)]
+pub struct UnitActionRange {
+    pub move_tiles: HashMap<Entity, HashSet<GridPosition>>,
+    pub attack_tiles: HashMap<Entity, HashSet<GridPosition>>,
+}
 
 #[derive(Resource, Default, Deref, DerefMut, Clone, Copy)]
 pub struct SelectedUnit(pub Option<Entity>);
@@ -59,7 +67,7 @@ pub enum RangeShape {
 }
 
 impl RangeShape {
-    pub fn contains(self, origin: GridPosition, tile: GridPosition) -> bool {
+    fn contains(self, origin: GridPosition, tile: GridPosition) -> bool {
         let dx = (tile.x - origin.x).abs();
         let dy = (tile.y - origin.y).abs();
 
@@ -88,6 +96,15 @@ impl RangeShape {
 #[derive(Component)]
 pub struct Movement {
     pub range: RangeShape,
+}
+
+pub fn plugin(app: &mut App) {
+    app.init_resource::<SelectedUnit>()
+        .init_resource::<HealthBarAssets>()
+        .init_resource::<UnitActionRange>()
+        .add_systems(Startup, setup.after(grid::spawn))
+        .add_systems(PreUpdate, calculate_ranges)
+        .add_systems(Update, (update_positions, update_health_bar, move_unit));
 }
 
 pub fn setup(
@@ -195,5 +212,55 @@ pub fn move_unit(
             .insert(player::HasMoved);
 
         next_state.set(player::TurnState::None);
+    }
+}
+
+pub fn calculate_ranges(
+    mut action_range: ResMut<UnitActionRange>,
+    units: Query<(Entity, &GridPosition, Option<&Movement>, Option<&Attack>), With<Unit>>,
+    unit_positions: Query<
+        &GridPosition,
+        (With<Unit>, Or<(Changed<GridPosition>, Added<GridPosition>)>),
+    >,
+    tiles: Query<&Tile>,
+    tilemap: ResMut<Tilemap>,
+) {
+    if unit_positions.is_empty() {
+        return;
+    }
+
+    action_range.move_tiles.clear();
+    action_range.attack_tiles.clear();
+
+    for (entity, pos, movement, attack) in units {
+        for tile in tiles {
+            let tile_pos = tile.into();
+            if let Some(movement) = movement
+                && movement
+                    .range
+                    .contains_with_los(*pos, tile_pos, |from, to| los(from, to, &tilemap, &tiles))
+            {
+                let is_over_unit = unit_positions.iter().any(|unit_pos| unit_pos == &tile_pos);
+                if !is_over_unit {
+                    action_range
+                        .move_tiles
+                        .entry(entity)
+                        .or_default()
+                        .insert(tile_pos);
+                }
+            }
+
+            if let Some(attack) = attack
+                && attack
+                    .range
+                    .contains_with_los(*pos, tile_pos, |from, to| los(from, to, &tilemap, &tiles))
+            {
+                action_range
+                    .attack_tiles
+                    .entry(entity)
+                    .or_default()
+                    .insert(tile_pos);
+            }
+        }
     }
 }

@@ -6,7 +6,7 @@ use crate::{
     game, interaction,
     tile_overlays::{self, OverlayLayer, TileOverlay, update_overlay_material},
     units::{
-        Attack,
+        UnitActionRange,
         enemy::EnemyUnit,
         player::{HasMoved, PlayerUnit},
     },
@@ -99,8 +99,7 @@ impl From<&Tile> for GridPosition {
 
 pub fn plugin(app: &mut App) {
     app.add_systems(PreStartup, setup_assets)
-        .add_systems(Startup, spawn)
-        .add_systems(PostStartup, build_tilemap)
+        .add_systems(Startup, (spawn, build_tilemap.after(spawn)))
         .add_message::<GridClicked>()
         .add_systems(Update, interaction::grid_clicked);
 }
@@ -182,15 +181,16 @@ pub fn spawn(
                 ))
                 .observe(
                     |event: On<Pointer<Over>>,
-                     enemies: Query<(&GridPosition, &Attack), With<EnemyUnit>>,
+                     enemies: Query<(Entity, &GridPosition), With<EnemyUnit>>,
                      tiles: Query<(Entity, &Tile)>,
+                     action_range: Res<UnitActionRange>,
                      mut overlays: Query<&mut TileOverlay>| {
                         let entity = event.event_target();
-                        if let Some((enemy_pos, attack)) = enemies.iter().find(|(pos, _)| {
+                        if let Some((enemy_entity, _)) = enemies.iter().find(|(_, pos)| {
                             **pos == GridPosition::from(tiles.get(entity).unwrap().1)
                         }) {
                             for (entity, tile) in tiles {
-                                if attack.range.contains(*enemy_pos, GridPosition::from(*tile)) {
+                                if action_range.attack_tiles[&enemy_entity].contains(&tile.into()) {
                                     overlays.get_mut(entity).unwrap().enemy_attack = true;
                                 }
                             }
@@ -250,12 +250,12 @@ pub fn build_tilemap(mut commands: Commands, tiles: Query<(Entity, &Tile)>) {
     commands.insert_resource(Tilemap(map));
 }
 
-pub fn los(from: GridPosition, to: GridPosition, tile_map: &Tilemap, tiles: &Query<&Tile>) -> bool {
+pub fn los(from: GridPosition, to: GridPosition, tilemap: &Tilemap, tiles: &Query<&Tile>) -> bool {
     for pos in line(from, to) {
         if pos == from {
             continue;
         }
-        if let Some(&entity) = tile_map.0.get(&pos)
+        if let Some(&entity) = tilemap.0.get(&pos)
             && let Ok(tile) = tiles.get(entity)
             && tile.r#type == TileType::Wall
         {

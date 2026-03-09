@@ -3,12 +3,12 @@ use bevy::prelude::*;
 use crate::{enemy, game, player};
 
 pub const LEVEL: &[&str] = &[
+    "............",
     "....W.......",
-    "....W.......",
-    ".P..W.......",
-    "....W.....E.",
-    ".P..........",
-    "..........E.",
+    ".P.WW...W...",
+    "....W...W.E.",
+    ".P......W...",
+    "........W.E.",
     "............",
     "............",
 ];
@@ -16,12 +16,14 @@ pub const LEVEL: &[&str] = &[
 pub fn plugin(app: &mut App) {
     app.add_systems(OnEnter(GameState::Win), spawn_win_screen)
         .add_systems(OnEnter(GameState::Lose), spawn_lose_screen)
+        .add_systems(PostStartup, start)
         .add_systems(PostUpdate, game::check_win);
 }
 
 #[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum GameState {
     #[default]
+    Begin,
     PlayerTurn,
     EnemyTurn,
     Win,
@@ -50,6 +52,10 @@ pub fn spawn_win_screen(mut commands: Commands) {
 
 pub fn spawn_lose_screen(mut commands: Commands) {
     commands.spawn(overlay_screen("You lose."));
+}
+
+pub fn start(mut next_state: ResMut<NextState<GameState>>) {
+    next_state.set(GameState::PlayerTurn);
 }
 
 fn overlay_screen(text: &str) -> impl Bundle {

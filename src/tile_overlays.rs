@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     grid::{GridPosition, Tile},
-    interaction::ValidMovement,
+    units::{SelectedUnit, UnitActionRange},
 };
 
 #[derive(Clone, Copy)]
@@ -67,8 +67,8 @@ pub(crate) fn plugin(app: &mut App) {
     app.add_systems(PreStartup, setup_assets).add_systems(
         Update,
         (
-            update_range_overlay.before(update_overlay_materials),
-            update_overlay_materials,
+            update_range_overlay.before(update_overlay_mesh_materials),
+            update_overlay_mesh_materials,
         ),
     );
 }
@@ -108,13 +108,26 @@ pub fn set_overlay_at(
     }
 }
 
-pub fn update_range_overlay(tiles: Query<(&mut TileOverlay, Has<ValidMovement>)>) {
-    for (mut overlay, valid_movement) in tiles {
-        overlay.r#move = valid_movement;
+pub fn update_range_overlay(
+    tiles: Query<(&Tile, &mut TileOverlay)>,
+    mut action_range: ResMut<UnitActionRange>,
+    selected_unit: Res<SelectedUnit>,
+) {
+    if selected_unit.is_changed() || action_range.is_changed() {
+        for (tile, mut overlay) in tiles {
+            let valid_movement = selected_unit.0.is_some_and(|unit| {
+                action_range
+                    .move_tiles
+                    .entry(unit)
+                    .or_default()
+                    .contains(&tile.into())
+            });
+            overlay.r#move = valid_movement;
+        }
     }
 }
 
-pub fn update_overlay_materials(
+pub fn update_overlay_mesh_materials(
     overlays: Query<(&TileOverlay, &Children), Changed<TileOverlay>>,
     mut overlay_mesh_materials: Query<&mut MeshMaterial2d<ColorMaterial>>,
     overlay_materials_handles: Res<Materials>,

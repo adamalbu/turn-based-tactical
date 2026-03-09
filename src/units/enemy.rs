@@ -8,6 +8,7 @@ use crate::{
     grid::{GridPosition, Tile},
     units::{
         Attack, Health, HealthBarAssets, HealthBarForeground, Movement, RangeShape, Unit,
+        UnitActionRange,
         player::{self, PlayerUnit},
     },
 };
@@ -76,13 +77,14 @@ pub fn on_enemy_turn(mut next_turn: ResMut<NextState<TurnState>>) {
 
 pub fn take_damage(
     mut commands: Commands,
-    enemies: Query<(Entity, &mut GridPosition, Option<&mut Health>), With<EnemyUnit>>,
-    players: Query<(&GridPosition, &Attack), (With<PlayerUnit>, Without<EnemyUnit>)>,
+    enemies: Query<(Entity, &GridPosition, Option<&mut Health>), With<EnemyUnit>>,
+    players: Query<(Entity, &Attack), (With<PlayerUnit>, Without<EnemyUnit>)>,
+    action_range: Res<UnitActionRange>,
     mut next_turn: ResMut<NextState<TurnState>>,
 ) {
     for (entity, pos, mut health) in enemies {
-        for (player_pos, attack) in players {
-            if attack.range.contains(*player_pos, *pos)
+        for (player_entity, attack) in players {
+            if action_range.attack_tiles[&player_entity].contains(pos)
                 && let Some(ref mut health) = health
             {
                 if health.hp <= attack.damage {
@@ -98,36 +100,35 @@ pub fn take_damage(
 }
 
 pub fn r#move(
-    mut enemies: Query<(&mut GridPosition, Option<&Movement>), With<EnemyUnit>>,
+    mut enemies: Query<(Entity, &mut GridPosition), With<EnemyUnit>>,
     players: Query<&GridPosition, (With<PlayerUnit>, Without<EnemyUnit>)>,
     tiles: Query<(Entity, &Tile)>,
+    action_range: Res<UnitActionRange>,
     mut next_turn: ResMut<NextState<TurnState>>,
 ) {
-    let mut occupied: HashSet<(i32, i32)> = enemies.iter().map(|(pos, _)| (pos.x, pos.y)).collect();
+    let mut occupied: HashSet<(i32, i32)> = enemies.iter().map(|(_, pos)| (pos.x, pos.y)).collect();
 
-    for (mut pos, movement) in &mut enemies {
+    for (entity, mut pos) in &mut enemies {
         let target = players
             .iter()
             .min_by_key(|pp| (pp.x - pos.x).abs() + (pp.y - pos.y).abs())
             .unwrap();
 
-        if let Some(movement) = movement {
-            let move_to = tiles
-                .iter()
-                .filter(|(_, tile)| {
-                    let tp = GridPosition::from(*tile);
-                    movement.range.contains(*pos, tp)
-                        && !players.iter().any(|pp| *pp == tp)
-                        && !occupied.contains(&(tp.x, tp.y))
-                })
-                .min_by_key(|(_, tile)| (tile.x - target.x).abs() + (tile.y - target.y).abs());
+        let move_to = tiles
+            .iter()
+            .filter(|(_, tile)| {
+                let tp = GridPosition::from(*tile);
+                action_range.move_tiles[&entity].contains(&tp)
+                    && !players.iter().any(|pp| *pp == tp)
+                    && !occupied.contains(&(tp.x, tp.y))
+            })
+            .min_by_key(|(_, tile)| (tile.x - target.x).abs() + (tile.y - target.y).abs());
 
-            if let Some((_, tile)) = move_to {
-                // remove old position, insert new one
-                occupied.remove(&(pos.x, pos.y));
-                *pos = GridPosition::from(*tile);
-                occupied.insert((pos.x, pos.y));
-            }
+        if let Some((_, tile)) = move_to {
+            // remove old position, insert new one
+            occupied.remove(&(pos.x, pos.y));
+            *pos = GridPosition::from(*tile);
+            occupied.insert((pos.x, pos.y));
         }
     }
 
