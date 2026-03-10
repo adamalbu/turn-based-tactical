@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 
 use crate::{
@@ -120,6 +122,8 @@ pub fn on_player_turn(
     >,
     action_range: Res<UnitActionRange>,
 ) {
+    bevy::platform::thread::sleep(Duration::from_millis(300));
+
     for (player_entity, player_pos, player_health) in players {
         commands.entity(player_entity).remove::<HasMoved>();
         if let Some(mut player_health) = player_health {

@@ -70,8 +70,6 @@ pub fn spawn(
 }
 
 pub fn on_enemy_turn(mut next_turn: ResMut<NextState<TurnState>>) {
-    bevy::platform::thread::sleep(Duration::from_millis(500));
-
     next_turn.set(TurnState::TakeDamage);
 }
 
@@ -131,6 +129,8 @@ pub fn r#move(
             occupied.insert((pos.x, pos.y));
         }
     }
+
+    bevy::platform::thread::sleep(Duration::from_millis(300));
 
     next_turn.set(TurnState::End);
 }
