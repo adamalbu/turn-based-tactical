@@ -8,12 +8,7 @@ pub mod player;
 use crate::{
     game::{self},
     grid::{self, GridPosition, Tile, Tilemap, los},
-    interaction::SelectedPosition,
-    ui::MoveButtonClicked,
-    units::{
-        enemy::EnemyAssets,
-        player::{PlayerAssets, PlayerUnit},
-    },
+    units::{enemy::EnemyAssets, player::PlayerAssets},
 };
 
 #[derive(Resource, Default)]
@@ -104,7 +99,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<UnitActionRange>()
         .add_systems(Startup, setup.after(grid::spawn))
         .add_systems(PreUpdate, calculate_ranges)
-        .add_systems(Update, (update_positions, update_health_bar, move_unit));
+        .add_systems(Update, (update_positions, update_health_bar));
 }
 
 pub fn setup(
@@ -192,26 +187,6 @@ pub fn update_health_bar(
                 transform.translation.x = -(((1.0 - ratio) * HEALTH_BAR_WIDTH) / 2.0);
             }
         }
-    }
-}
-
-pub fn move_unit(
-    mut commands: Commands,
-    selected_unit: Res<SelectedUnit>,
-    target_pos: Res<SelectedPosition>,
-    mut player_transform: Query<&mut GridPosition, With<PlayerUnit>>,
-    mut ev_move_clicked: MessageReader<MoveButtonClicked>,
-    mut next_state: ResMut<NextState<player::TurnState>>,
-) {
-    for _ in ev_move_clicked.read() {
-        let mut transform = player_transform.get_mut(selected_unit.unwrap()).unwrap();
-        *transform = target_pos.0.unwrap();
-
-        commands
-            .entity(selected_unit.unwrap())
-            .insert(player::HasMoved);
-
-        next_state.set(player::TurnState::None);
     }
 }
 

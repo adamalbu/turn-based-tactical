@@ -79,7 +79,6 @@ pub fn deselect(mut commands: Commands, mut selected_unit: ResMut<units::Selecte
     commands.trigger(Deselect);
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn selected_player(
     selected_unit: ResMut<units::SelectedUnit>,
     player: Query<&GridPosition, With<PlayerUnit>>,

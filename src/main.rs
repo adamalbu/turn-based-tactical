@@ -45,6 +45,7 @@ fn main() {
             units::plugin,
             grid::plugin,
             game::plugin,
+            ui::plugin,
         ))
         .insert_resource(ClearColor(Color::WHITE))
         .init_state::<game::GameState>()

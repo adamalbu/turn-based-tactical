@@ -7,7 +7,7 @@ use crate::{
     tile_overlays::{self, OverlayLayer, TileOverlay, update_overlay_material},
     units::{
         Unit, UnitActionRange,
-        player::{HasMoved, PlayerUnit},
+        player::{HasActed, PlayerUnit},
     },
 };
 
@@ -225,7 +225,7 @@ pub fn spawn(
                      tiles: Query<(Entity, &Tile)>,
                      players: Query<
                         (Entity, &GridPosition),
-                        (With<PlayerUnit>, Without<HasMoved>),
+                        (With<PlayerUnit>, Without<HasActed>),
                     >,
                      mut ev_grid_clicked: MessageWriter<GridClicked>| {
                         let (entity, tile) = tiles.get(event.entity).unwrap();

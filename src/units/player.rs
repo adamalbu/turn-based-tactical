@@ -5,11 +5,11 @@ use bevy::prelude::*;
 use crate::{
     game,
     grid::GridPosition,
-    interaction,
-    ui::{self, MoveButtonClicked},
+    interaction::{self, SelectedPosition},
+    ui::PlayerAction,
     units::{
-        Attack, Health, HealthBarAssets, HealthBarForeground, Movement, RangeShape, Unit,
-        UnitActionRange,
+        Attack, Health, HealthBarAssets, HealthBarForeground, Movement, RangeShape, SelectedUnit,
+        Unit, UnitActionRange,
         enemy::{self, EnemyUnit},
     },
 };
@@ -33,12 +33,11 @@ pub struct PlayerAssets {
 }
 
 #[derive(Component)]
-pub struct HasMoved;
+pub struct HasActed;
 
 pub fn plugin(app: &mut App) {
     app.init_resource::<PlayerAssets>()
         .init_state::<TurnState>()
-        .add_message::<ui::MoveButtonClicked>()
         .init_resource::<interaction::SelectedPosition>()
         .add_observer(interaction::on_deselect)
         .add_systems(
@@ -52,15 +51,11 @@ pub fn plugin(app: &mut App) {
         )
         .add_systems(
             OnEnter(TurnState::SelectedPosition),
-            (interaction::selected_position, ui::spawn_action_bar),
+            interaction::selected_position,
         )
-        .add_systems(OnExit(TurnState::SelectedPosition), ui::despawn_action_bar)
         .add_systems(OnEnter(TurnState::End), end_turn)
         .add_systems(OnEnter(game::GameState::PlayerTurn), on_player_turn)
-        .add_systems(
-            Update,
-            ui::handle_move_button.run_if(in_state(TurnState::SelectedPosition)),
-        );
+        .add_systems(Update, move_player);
 }
 
 pub fn spawn(
@@ -102,11 +97,11 @@ pub fn spawn(
 }
 
 pub fn check_player_turn_over(
-    mut ev_move_clicked: MessageReader<MoveButtonClicked>,
+    mut ev_player_action: MessageReader<PlayerAction>,
     mut next_turn: ResMut<NextState<TurnState>>,
-    actionable_units: Query<&PlayerUnit, Without<HasMoved>>,
+    actionable_units: Query<&PlayerUnit, Without<HasActed>>,
 ) {
-    for _ in ev_move_clicked.read() {
+    for _ in ev_player_action.read() {
         if actionable_units.count() == 0 {
             next_turn.set(TurnState::End);
         }
@@ -125,7 +120,7 @@ pub fn on_player_turn(
     bevy::platform::thread::sleep(Duration::from_millis(300));
 
     for (player_entity, player_pos, player_health) in players {
-        commands.entity(player_entity).remove::<HasMoved>();
+        commands.entity(player_entity).remove::<HasActed>();
         if let Some(mut player_health) = player_health {
             for (enemy_entity, enemy_attack) in enemies {
                 if let Some(enemy_attack) = enemy_attack
@@ -139,6 +134,29 @@ pub fn on_player_turn(
                 }
             }
         }
+    }
+}
+
+pub fn move_player(
+    mut commands: Commands,
+    selected_unit: Res<SelectedUnit>,
+    target_pos: Res<SelectedPosition>,
+    mut player_transform: Query<&mut GridPosition, With<PlayerUnit>>,
+    mut ev_player_action: MessageReader<PlayerAction>,
+    mut next_state: ResMut<NextState<TurnState>>,
+) {
+    for ev in ev_player_action.read() {
+        match ev {
+            PlayerAction::Move => {
+                let mut transform = player_transform.get_mut(selected_unit.unwrap()).unwrap();
+                *transform = target_pos.0.unwrap();
+            }
+            PlayerAction::Wait => (),
+        }
+
+        commands.entity(selected_unit.unwrap()).insert(HasActed);
+
+        next_state.set(TurnState::None);
     }
 }
 
