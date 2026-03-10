@@ -1,2 +1,2 @@
 # Turn Based Tactical
-A turn-based tactical strategy game built with Rust with the Bevy game engine
+A turn-based tactical strategy game built with Rust with the Bevy game engine. It only has one level right now.

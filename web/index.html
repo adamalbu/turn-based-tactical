@@ -6,11 +6,25 @@
     </head>
 
     <body>
-        <title>game :3</title>
+        <h1>game :3</h1>
         <script type="module">
             import init from "./pkg/turn-based-tactical.js";
 
             init();
         </script>
+        <h2>Instructions:</h2>
+        <p>
+            The red circles are the player units. You control them. Click on a
+            player unit to select it. Green and brown tiles represent the
+            movement range, red and brown tiles represent the attack range.
+            Click on a green or brown tile to select it, then click the move
+            button to move the player to the selected tile or click the wait
+            button to do nothing. Once you have selected the action, you cannot
+            choose another action again until your turn is up. Your turn is up
+            when all your units have taken an action. Attacking is automatically
+            done after your turn ends. The green circles are enemy units. They
+            always move closer to the player. Your goal is to eliminate all of
+            them.
+        </p>
     </body>
 </html>
