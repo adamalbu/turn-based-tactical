@@ -130,6 +130,7 @@ pub fn r#move(
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     bevy::platform::thread::sleep(Duration::from_millis(300));
 
     next_turn.set(TurnState::End);

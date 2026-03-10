@@ -117,6 +117,7 @@ pub fn on_player_turn(
     >,
     action_range: Res<UnitActionRange>,
 ) {
+    #[cfg(not(target_arch = "wasm32"))]
     bevy::platform::thread::sleep(Duration::from_millis(300));
 
     for (player_entity, player_pos, player_health) in players {
