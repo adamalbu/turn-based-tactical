@@ -6,8 +6,7 @@ use crate::{
     game, interaction,
     tile_overlays::{self, OverlayLayer, TileOverlay, update_overlay_material},
     units::{
-        UnitActionRange,
-        enemy::EnemyUnit,
+        Unit, UnitActionRange,
         player::{HasMoved, PlayerUnit},
     },
 };
@@ -181,17 +180,27 @@ pub fn spawn(
                 ))
                 .observe(
                     |event: On<Pointer<Over>>,
-                     enemies: Query<(Entity, &GridPosition), With<EnemyUnit>>,
+                     units: Query<(Entity, &GridPosition), With<Unit>>,
                      tiles: Query<(Entity, &Tile)>,
                      action_range: Res<UnitActionRange>,
                      mut overlays: Query<&mut TileOverlay>| {
                         let entity = event.event_target();
-                        if let Some((enemy_entity, _)) = enemies.iter().find(|(_, pos)| {
+                        if let Some((unit_entity, _)) = units.iter().find(|(_, pos)| {
                             **pos == GridPosition::from(tiles.get(entity).unwrap().1)
                         }) {
                             for (entity, tile) in tiles {
-                                if action_range.attack_tiles[&enemy_entity].contains(&tile.into()) {
-                                    overlays.get_mut(entity).unwrap().enemy_attack = true;
+                                let valid_attack =
+                                    action_range.attack_tiles[&unit_entity].contains(&tile.into());
+                                let valid_move =
+                                    action_range.move_tiles[&unit_entity].contains(&tile.into());
+
+                                let mut overlay = overlays.get_mut(entity).unwrap();
+
+                                if valid_attack {
+                                    overlay.attack_transparent = true;
+                                }
+                                if valid_move {
+                                    overlay.move_transparent = true;
                                 }
                             }
                         }
@@ -206,7 +215,8 @@ pub fn spawn(
                      tiles: Query<Entity, With<Tile>>,
                      mut overlays: Query<&mut TileOverlay>| {
                         for entity in tiles {
-                            overlays.get_mut(entity).unwrap().enemy_attack = false;
+                            overlays.get_mut(entity).unwrap().attack_transparent = false;
+                            overlays.get_mut(entity).unwrap().move_transparent = false;
                         }
                     },
                 )

@@ -59,7 +59,7 @@ pub fn spawn(
                 HealthBarForeground,
                 Mesh2d(health_bar_assets.health_mesh.clone()),
                 MeshMaterial2d(health_bar_assets.health_material.clone()),
-                Transform::from_xyz(0.0, -30.0, 0.9),
+                Transform::from_xyz(0.0, -30.0, 0.91),
             ));
             parent.spawn((
                 Mesh2d(health_bar_assets.background_mesh.clone()),

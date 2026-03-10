@@ -84,12 +84,19 @@ pub fn spawn(
             Health::new(8),
             spawn_pos,
         ))
-        .with_child((
-            HealthBarForeground,
-            Mesh2d(health_bar_assets.health_mesh.clone()),
-            MeshMaterial2d(health_bar_assets.health_material.clone()),
-            Transform::from_xyz(0.0, -30.0, 0.9),
-        ));
+        .with_children(|parent| {
+            parent.spawn((
+                HealthBarForeground,
+                Mesh2d(health_bar_assets.health_mesh.clone()),
+                MeshMaterial2d(health_bar_assets.health_material.clone()),
+                Transform::from_xyz(0.0, -30.0, 0.91),
+            ));
+            parent.spawn((
+                Mesh2d(health_bar_assets.background_mesh.clone()),
+                MeshMaterial2d(health_bar_assets.background_material.clone()),
+                Transform::from_xyz(0.0, -30.0, 0.9),
+            ));
+        });
 }
 
 pub fn check_player_turn_over(

@@ -71,7 +71,6 @@ pub fn on_deselect(
     for entity in tiles.iter() {
         let mut overlay = overlays.get_mut(entity).unwrap();
         overlay.selected = false;
-        overlay.attack = false;
     }
 }
 
@@ -85,7 +84,6 @@ pub fn selected_player(
     selected_unit: ResMut<units::SelectedUnit>,
     player: Query<&GridPosition, With<PlayerUnit>>,
     tiles: Query<(Entity, &Tile)>,
-    action_range: Res<UnitActionRange>,
     mut overlays: Query<&mut TileOverlay>,
 ) {
     let entity = selected_unit.unwrap();
@@ -99,10 +97,6 @@ pub fn selected_player(
 
         if dx == 0 && dy == 0 {
             overlay.selected = true;
-        }
-
-        if action_range.attack_tiles[&entity].contains(&tile.into()) {
-            overlay.attack = true;
         }
     }
 }

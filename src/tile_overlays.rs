@@ -17,8 +17,9 @@ pub enum OverlayLayer {
 #[derive(Component, Default, Debug, Clone, Copy)]
 pub struct TileOverlay {
     r#move: bool,
-    pub attack: bool,
-    pub enemy_attack: bool,
+    pub move_transparent: bool,
+    attack: bool,
+    pub attack_transparent: bool,
     pub selected: bool,
     pub hover: bool,
 }
@@ -44,8 +45,12 @@ impl TileOverlay {
             materials.r#move.clone()
         } else if self.attack {
             materials.attack.clone()
-        } else if self.enemy_attack {
-            materials.enemy_attack.clone()
+        } else if self.move_transparent && self.attack_transparent {
+            materials.move_attack_transparent.clone()
+        } else if self.move_transparent {
+            materials.move_transparent.clone()
+        } else if self.attack_transparent {
+            materials.attack_transparent.clone()
         } else {
             materials.none.clone()
         }
@@ -56,9 +61,11 @@ impl TileOverlay {
 pub struct Materials {
     pub none: Handle<ColorMaterial>,
     pub r#move: Handle<ColorMaterial>,
-    pub enemy_attack: Handle<ColorMaterial>,
+    pub move_transparent: Handle<ColorMaterial>,
+    pub attack_transparent: Handle<ColorMaterial>,
     pub attack: Handle<ColorMaterial>,
     pub move_attack: Handle<ColorMaterial>,
+    pub move_attack_transparent: Handle<ColorMaterial>,
     pub selected: Handle<ColorMaterial>,
     pub hover: Handle<ColorMaterial>,
 }
@@ -77,9 +84,11 @@ pub fn setup_assets(mut commands: Commands, mut materials: ResMut<Assets<ColorMa
     commands.insert_resource(Materials {
         none: materials.add(Color::NONE),
         r#move: materials.add(Color::srgba(0.0, 1.0, 0.0, 0.5)),
+        move_transparent: materials.add(Color::srgba(0.0, 1.0, 0.0, 0.3)),
         attack: materials.add(Color::srgba(1.0, 0.0, 0.0, 0.5)),
-        enemy_attack: materials.add(Color::srgba(1.0, 0.0, 0.0, 0.3)),
+        attack_transparent: materials.add(Color::srgba(1.0, 0.0, 0.0, 0.3)),
         move_attack: materials.add(Color::srgba(0.5, 0.5, 0.0, 0.5)),
+        move_attack_transparent: materials.add(Color::srgba(0.5, 0.5, 0.0, 0.3)),
         selected: materials.add(Color::srgba(0.0, 0.0, 1.0, 0.5)),
         hover: materials.add(Color::srgba(1.0, 1.0, 0.0, 0.5)),
     });
@@ -110,19 +119,20 @@ pub fn set_overlay_at(
 
 pub fn update_range_overlay(
     tiles: Query<(&Tile, &mut TileOverlay)>,
-    mut action_range: ResMut<UnitActionRange>,
+    action_range: ResMut<UnitActionRange>,
     selected_unit: Res<SelectedUnit>,
 ) {
     if selected_unit.is_changed() || action_range.is_changed() {
         for (tile, mut overlay) in tiles {
-            let valid_movement = selected_unit.0.is_some_and(|unit| {
-                action_range
-                    .move_tiles
-                    .entry(unit)
-                    .or_default()
-                    .contains(&tile.into())
-            });
+            let valid_movement = selected_unit
+                .0
+                .is_some_and(|unit| action_range.move_tiles[&unit].contains(&tile.into()));
+
+            let valid_attack = selected_unit
+                .0
+                .is_some_and(|unit| action_range.attack_tiles[&unit].contains(&tile.into()));
             overlay.r#move = valid_movement;
+            overlay.attack = valid_attack;
         }
     }
 }
