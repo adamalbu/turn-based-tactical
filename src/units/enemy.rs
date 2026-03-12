@@ -7,7 +7,7 @@ use crate::{
     game,
     grid::{GridPosition, Tile},
     units::{
-        Attack, Health, HealthBarAssets, HealthBarForeground, Movement, RangeShape, Unit,
+        self, Attack, Health, HealthBarAssets, HealthBarForeground, Movement, RangeShape, Unit,
         UnitActionRange,
         player::{self, PlayerUnit},
     },
@@ -29,6 +29,18 @@ pub struct EnemyUnit;
 pub struct EnemyAssets {
     pub mesh: Handle<Mesh>,
     pub material: Handle<ColorMaterial>,
+}
+
+pub fn plugin(app: &mut App) {
+    app.init_resource::<EnemyAssets>()
+        .init_state::<TurnState>()
+        .add_systems(OnEnter(TurnState::TakeDamage), take_damage)
+        .add_systems(OnEnter(TurnState::Move), r#move)
+        .add_systems(OnEnter(TurnState::End), end_turn)
+        .add_systems(
+            OnEnter(game::GameState::EnemyTurn),
+            on_enemy_turn.after(units::calculate_ranges),
+        );
 }
 
 pub fn spawn(
@@ -107,6 +119,17 @@ pub fn r#move(
     let mut occupied: HashSet<(i32, i32)> = enemies.iter().map(|(_, pos)| (pos.x, pos.y)).collect();
 
     for (entity, mut pos) in &mut enemies {
+        let move_tile_count = action_range
+            .move_tiles
+            .get(&entity)
+            .map(|s| s.len())
+            .unwrap_or(0);
+        bevy::log::debug!("Enemy {:?} has {} move tiles", entity, move_tile_count);
+
+        if move_tile_count == 0 {
+            bevy::log::error!("Enemy has no move tiles")
+        }
+
         let target = players
             .iter()
             .min_by_key(|pp| (pp.x - pos.x).abs() + (pp.y - pos.y).abs())
