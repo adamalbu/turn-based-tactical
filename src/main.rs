@@ -27,10 +27,6 @@ fn main() {
                     }),
                     ..Default::default()
                 })
-                .set(LogPlugin {
-                    level: bevy::log::Level::DEBUG,
-                    ..Default::default()
-                })
                 .disable::<bevy::audio::AudioPlugin>(),
             MeshPickingPlugin,
             player::plugin,

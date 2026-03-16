@@ -124,7 +124,6 @@ pub fn r#move(
             .get(&entity)
             .map(|s| s.len())
             .unwrap_or(0);
-        bevy::log::debug!("Enemy {:?} has {} move tiles", entity, move_tile_count);
 
         if move_tile_count == 0 {
             bevy::log::error!("Enemy has no move tiles")

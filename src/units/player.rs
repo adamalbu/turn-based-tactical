@@ -56,7 +56,6 @@ pub fn plugin(app: &mut App) {
         .add_systems(OnEnter(TurnState::End), end_turn)
         .add_systems(OnEnter(game::GameState::PlayerTurn), on_player_turn)
         .add_systems(Update, (move_player, check_player_turn_over));
-    bevy::log::debug!("player plugin");
 }
 
 pub fn spawn(
