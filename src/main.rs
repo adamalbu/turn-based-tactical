@@ -30,7 +30,8 @@ fn main() {
                 .set(LogPlugin {
                     level: bevy::log::Level::DEBUG,
                     ..Default::default()
-                }),
+                })
+                .disable::<bevy::audio::AudioPlugin>(),
             MeshPickingPlugin,
             player::plugin,
             enemy::plugin,
