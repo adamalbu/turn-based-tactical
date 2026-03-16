@@ -55,7 +55,8 @@ pub fn plugin(app: &mut App) {
         )
         .add_systems(OnEnter(TurnState::End), end_turn)
         .add_systems(OnEnter(game::GameState::PlayerTurn), on_player_turn)
-        .add_systems(Update, move_player);
+        .add_systems(Update, (move_player, check_player_turn_over));
+    bevy::log::debug!("player plugin");
 }
 
 pub fn spawn(
@@ -97,14 +98,16 @@ pub fn spawn(
 }
 
 pub fn check_player_turn_over(
-    mut ev_player_action: MessageReader<PlayerAction>,
+    mut commands: Commands,
     mut next_turn: ResMut<NextState<TurnState>>,
-    actionable_units: Query<&PlayerUnit, Without<HasActed>>,
+    unactionable_units: Query<&PlayerUnit, Without<HasActed>>,
+    actionable_units: Query<Entity, (With<HasActed>, With<PlayerUnit>)>,
 ) {
-    for _ in ev_player_action.read() {
-        if actionable_units.count() == 0 {
-            next_turn.set(TurnState::End);
+    if unactionable_units.count() == 0 {
+        for entity in actionable_units {
+            commands.entity(entity).remove::<HasActed>();
         }
+        next_turn.set(TurnState::End);
     }
 }
 
@@ -121,7 +124,6 @@ pub fn on_player_turn(
     bevy::platform::thread::sleep(Duration::from_millis(300));
 
     for (player_entity, player_pos, player_health) in players {
-        commands.entity(player_entity).remove::<HasActed>();
         if let Some(mut player_health) = player_health {
             for (enemy_entity, enemy_attack) in enemies {
                 if let Some(enemy_attack) = enemy_attack
