@@ -4,7 +4,23 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.18.1", default-features = false, features = ["2d", "ui"] }
+bevy = { version = "0.18.1", default-features = false, features = [
+    "bevy_camera",
+    "bevy_window",
+    "bevy_state",
+    "bevy_mesh",
+    "bevy_winit",
+    "bevy_render",
+    "bevy_ui",
+    "bevy_ui_render",
+    "bevy_text",
+    "default_font",
+    "bevy_core_pipeline",
+    "wayland",
+    "webgl2",
+    "mesh_picking",
+    "bevy_sprite_render",
+] }
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

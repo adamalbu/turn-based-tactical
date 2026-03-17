@@ -119,16 +119,6 @@ pub fn r#move(
     let mut occupied: HashSet<(i32, i32)> = enemies.iter().map(|(_, pos)| (pos.x, pos.y)).collect();
 
     for (entity, mut pos) in &mut enemies {
-        let move_tile_count = action_range
-            .move_tiles
-            .get(&entity)
-            .map(|s| s.len())
-            .unwrap_or(0);
-
-        if move_tile_count == 0 {
-            bevy::log::error!("Enemy has no move tiles")
-        }
-
         let target = players
             .iter()
             .min_by_key(|pp| (pp.x - pos.x).abs() + (pp.y - pos.y).abs())

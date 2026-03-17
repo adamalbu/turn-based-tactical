@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use bevy::{log::LogPlugin, prelude::*};
+use bevy::prelude::*;
 
 use crate::units::{enemy, player};
 
@@ -18,16 +18,14 @@ pub fn spawn_camera(mut commands: Commands) {
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "Tactical Game".into(),
-                        name: Some("turn-based-tactical".into()),
-                        ..Default::default()
-                    }),
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Tactical Game".into(),
+                    name: Some("turn-based-tactical".into()),
                     ..Default::default()
-                })
-                .disable::<bevy::audio::AudioPlugin>(),
+                }),
+                ..Default::default()
+            }),
             MeshPickingPlugin,
             player::plugin,
             enemy::plugin,
